@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# IDE / editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs / runtime output
+*.log
+logs/
+output/
+outputs/
+diagnostics/
+
+# Local configuration / secrets
+.env
+.env.*
+!.env.example
+
+# Models and datasets
+# Keep manifests/documentation in Git.
+# Large binary assets will receive an explicit storage policy before being committed.
+datasets/*
+!datasets/manifests/
+!datasets/manifests/**
+!datasets/README.md
+
+models/*
+!models/manifests/
+!models/manifests/**
+!models/README.md
+
+# Recognition fixtures may eventually contain binary images.
+# Do not globally ignore tests/fixtures; storage policy will be explicit.
