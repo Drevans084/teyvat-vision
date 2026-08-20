@@ -12,7 +12,6 @@ from teyvat_vision.domain.identity import CanonicalId, EntityKind
 from teyvat_vision.domain.instance_identity import OwnedItemId
 from teyvat_vision.domain.provenance import Provenance
 
-
 type ObservationSubject = CanonicalId | OwnedItemId
 
 
@@ -56,9 +55,10 @@ class Observation[T]:
     observed_at: datetime | None = None
 
     def __post_init__(self) -> None:
-        if self.confidence is not None:
-            if not isfinite(self.confidence) or not 0.0 <= self.confidence <= 1.0:
-                raise ValueError("confidence must be a finite value between 0.0 and 1.0")
+        if self.confidence is not None and (
+            not isfinite(self.confidence) or not 0.0 <= self.confidence <= 1.0
+        ):
+            raise ValueError("confidence must be a finite value between 0.0 and 1.0")
 
         self._validate_optional_text(
             "capture_ref",

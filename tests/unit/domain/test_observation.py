@@ -1,10 +1,17 @@
 from datetime import UTC, datetime
+from typing import Literal
 
 import pytest
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
 from teyvat_vision.domain.observation import Observation, ObservationTarget
 from teyvat_vision.domain.provenance import Provenance, ProvenanceKind
+
+type OptionalTextField = Literal[
+    "capture_ref",
+    "diagnostic_ref",
+    "recognizer",
+]
 
 
 def character_target(field: str = "level") -> ObservationTarget:
@@ -22,6 +29,34 @@ def provenance() -> Provenance:
         kind=ProvenanceKind.MANUAL_VERIFIED,
         source="verified-fixture",
         reference="fixture-001",
+    )
+
+
+def observation_with_optional_text(
+    field_name: OptionalTextField,
+    value: str,
+) -> Observation[int]:
+    if field_name == "capture_ref":
+        return Observation(
+            target=character_target(),
+            value=90,
+            provenance=provenance(),
+            capture_ref=value,
+        )
+
+    if field_name == "diagnostic_ref":
+        return Observation(
+            target=character_target(),
+            value=90,
+            provenance=provenance(),
+            diagnostic_ref=value,
+        )
+
+    return Observation(
+        target=character_target(),
+        value=90,
+        provenance=provenance(),
+        recognizer=value,
     )
 
 
@@ -123,19 +158,13 @@ def test_observation_can_record_recognizer_identity() -> None:
     ],
 )
 def test_observation_rejects_blank_optional_text(
-    field_name: str,
+    field_name: OptionalTextField,
     value: str,
 ) -> None:
-    kwargs = {
-        field_name: value,
-    }
-
     with pytest.raises(ValueError, match=field_name):
-        Observation(
-            target=character_target(),
-            value=90,
-            provenance=provenance(),
-            **kwargs,
+        observation_with_optional_text(
+            field_name,
+            value,
         )
 
 
@@ -156,19 +185,13 @@ def test_observation_rejects_blank_optional_text(
     ],
 )
 def test_observation_rejects_surrounding_whitespace_in_optional_text(
-    field_name: str,
+    field_name: OptionalTextField,
     value: str,
 ) -> None:
-    kwargs = {
-        field_name: value,
-    }
-
     with pytest.raises(ValueError, match=field_name):
-        Observation(
-            target=character_target(),
-            value=90,
-            provenance=provenance(),
-            **kwargs,
+        observation_with_optional_text(
+            field_name,
+            value,
         )
 
 
