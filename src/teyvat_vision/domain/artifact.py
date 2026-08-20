@@ -1,7 +1,8 @@
 """Artifact domain model for Teyvat Vision.
 
-Artifact objects represent validated account state. Static game-rule validation
-belongs in the game-data layer rather than being hardcoded here.
+Artifact objects represent validated account state. Each owned artifact has an
+instance identity separate from its shared artifact-set definition identity.
+Static game-rule validation belongs in the game-data layer.
 """
 
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from enum import StrEnum
 from math import isfinite
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.domain.instance_identity import OwnedItemId
 
 
 class ArtifactSlot(StrEnum):
@@ -41,9 +43,9 @@ class StatValue:
 
 @dataclass(frozen=True, slots=True)
 class Artifact:
-    """Canonical state for one account-owned artifact."""
+    """Canonical state for one account-owned artifact instance."""
 
-    set_identity: CanonicalId
+    identity: OwnedItemId
     slot: ArtifactSlot
     rarity: int
     level: int
@@ -53,8 +55,8 @@ class Artifact:
     equipped_to: CanonicalId | None = None
 
     def __post_init__(self) -> None:
-        if self.set_identity.kind is not EntityKind.ARTIFACT_SET:
-            raise ValueError("artifact set identity must have EntityKind.ARTIFACT_SET")
+        if self.identity.definition.kind is not EntityKind.ARTIFACT_SET:
+            raise ValueError("artifact identity definition must have EntityKind.ARTIFACT_SET")
 
         if not 1 <= self.rarity <= 5:
             raise ValueError("rarity must be between 1 and 5")

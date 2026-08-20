@@ -4,6 +4,7 @@ from teyvat_vision.domain.account import AccountSnapshot, SectionStatus, Snapsho
 from teyvat_vision.domain.artifact import Artifact, ArtifactSlot, StatValue
 from teyvat_vision.domain.character import Character, TalentLevels
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.domain.instance_identity import OwnedItemId
 from teyvat_vision.domain.material import MaterialStack
 from teyvat_vision.domain.weapon import Weapon
 
@@ -15,17 +16,39 @@ def character_id(key: str = "10000002") -> CanonicalId:
     )
 
 
-def weapon_id(key: str = "11509") -> CanonicalId:
+def weapon_definition(key: str = "11509") -> CanonicalId:
     return CanonicalId(
         kind=EntityKind.WEAPON,
         key=key,
     )
 
 
-def artifact_set_id(key: str = "15001") -> CanonicalId:
+def weapon_id(
+    key: str = "11509",
+    *,
+    instance_key: str = "weapon-000001",
+) -> OwnedItemId:
+    return OwnedItemId(
+        definition=weapon_definition(key),
+        instance_key=instance_key,
+    )
+
+
+def artifact_set_definition(key: str = "15001") -> CanonicalId:
     return CanonicalId(
         kind=EntityKind.ARTIFACT_SET,
         key=key,
+    )
+
+
+def artifact_id(
+    key: str = "15001",
+    *,
+    instance_key: str = "artifact-000001",
+) -> OwnedItemId:
+    return OwnedItemId(
+        definition=artifact_set_definition(key),
+        instance_key=instance_key,
     )
 
 
@@ -53,10 +76,14 @@ def character(key: str = "10000002") -> Character:
 def weapon(
     key: str = "11509",
     *,
+    instance_key: str = "weapon-000001",
     equipped_to: CanonicalId | None = None,
 ) -> Weapon:
     return Weapon(
-        identity=weapon_id(key),
+        identity=weapon_id(
+            key,
+            instance_key=instance_key,
+        ),
         level=90,
         ascension=6,
         refinement=1,
@@ -66,11 +93,16 @@ def weapon(
 
 
 def artifact(
+    key: str = "15001",
     *,
+    instance_key: str = "artifact-000001",
     equipped_to: CanonicalId | None = None,
 ) -> Artifact:
     return Artifact(
-        set_identity=artifact_set_id(),
+        identity=artifact_id(
+            key,
+            instance_key=instance_key,
+        ),
         slot=ArtifactSlot.FLOWER,
         rarity=5,
         level=20,
@@ -227,9 +259,15 @@ def test_account_snapshot_rejects_duplicate_material_stacks() -> None:
         )
 
 
-def test_account_snapshot_allows_multiple_copies_of_same_weapon() -> None:
-    first = weapon("11509")
-    second = weapon("11509")
+def test_account_snapshot_allows_multiple_copies_of_same_weapon_definition() -> None:
+    first = weapon(
+        "11509",
+        instance_key="weapon-000001",
+    )
+    second = weapon(
+        "11509",
+        instance_key="weapon-000002",
+    )
 
     snapshot = AccountSnapshot(
         characters=SnapshotSection(
@@ -251,6 +289,104 @@ def test_account_snapshot_allows_multiple_copies_of_same_weapon() -> None:
     )
 
     assert len(snapshot.weapons.items) == 2
+    assert first.identity.definition == second.identity.definition
+    assert first.identity != second.identity
+
+
+def test_account_snapshot_rejects_duplicate_owned_weapon_identity() -> None:
+    first = weapon(
+        "11509",
+        instance_key="weapon-000001",
+    )
+    duplicate = weapon(
+        "11509",
+        instance_key="weapon-000001",
+    )
+
+    with pytest.raises(ValueError, match="duplicate weapon"):
+        AccountSnapshot(
+            characters=SnapshotSection(
+                status=SectionStatus.NOT_SCANNED,
+                items=(),
+            ),
+            weapons=SnapshotSection(
+                status=SectionStatus.COMPLETE,
+                items=(first, duplicate),
+            ),
+            artifacts=SnapshotSection(
+                status=SectionStatus.NOT_SCANNED,
+                items=(),
+            ),
+            materials=SnapshotSection(
+                status=SectionStatus.NOT_SCANNED,
+                items=(),
+            ),
+        )
+
+
+def test_account_snapshot_allows_multiple_artifacts_from_same_set() -> None:
+    first = artifact(
+        "15001",
+        instance_key="artifact-000001",
+    )
+    second = artifact(
+        "15001",
+        instance_key="artifact-000002",
+    )
+
+    snapshot = AccountSnapshot(
+        characters=SnapshotSection(
+            status=SectionStatus.NOT_SCANNED,
+            items=(),
+        ),
+        weapons=SnapshotSection(
+            status=SectionStatus.NOT_SCANNED,
+            items=(),
+        ),
+        artifacts=SnapshotSection(
+            status=SectionStatus.COMPLETE,
+            items=(first, second),
+        ),
+        materials=SnapshotSection(
+            status=SectionStatus.NOT_SCANNED,
+            items=(),
+        ),
+    )
+
+    assert len(snapshot.artifacts.items) == 2
+    assert first.identity.definition == second.identity.definition
+    assert first.identity != second.identity
+
+
+def test_account_snapshot_rejects_duplicate_owned_artifact_identity() -> None:
+    first = artifact(
+        "15001",
+        instance_key="artifact-000001",
+    )
+    duplicate = artifact(
+        "15001",
+        instance_key="artifact-000001",
+    )
+
+    with pytest.raises(ValueError, match="duplicate artifact"):
+        AccountSnapshot(
+            characters=SnapshotSection(
+                status=SectionStatus.NOT_SCANNED,
+                items=(),
+            ),
+            weapons=SnapshotSection(
+                status=SectionStatus.NOT_SCANNED,
+                items=(),
+            ),
+            artifacts=SnapshotSection(
+                status=SectionStatus.COMPLETE,
+                items=(first, duplicate),
+            ),
+            materials=SnapshotSection(
+                status=SectionStatus.NOT_SCANNED,
+                items=(),
+            ),
+        )
 
 
 def test_complete_character_section_requires_equipment_owner_to_exist() -> None:

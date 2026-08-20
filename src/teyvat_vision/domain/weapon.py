@@ -1,20 +1,20 @@
 """Weapon domain model for Teyvat Vision.
 
-Weapon objects represent validated account state. Recognition uncertainty
-belongs in the recognition layer and must be resolved before constructing a
-Weapon.
+Weapon objects represent validated account state. Each owned weapon has an
+instance identity separate from its shared canonical game-definition identity.
 """
 
 from dataclasses import dataclass
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.domain.instance_identity import OwnedItemId
 
 
 @dataclass(frozen=True, slots=True)
 class Weapon:
-    """Canonical state for one account-owned weapon."""
+    """Canonical state for one account-owned weapon instance."""
 
-    identity: CanonicalId
+    identity: OwnedItemId
     level: int
     ascension: int
     refinement: int
@@ -22,8 +22,8 @@ class Weapon:
     equipped_to: CanonicalId | None = None
 
     def __post_init__(self) -> None:
-        if self.identity.kind is not EntityKind.WEAPON:
-            raise ValueError("weapon identity must have EntityKind.WEAPON")
+        if self.identity.definition.kind is not EntityKind.WEAPON:
+            raise ValueError("weapon identity definition must have EntityKind.WEAPON")
 
         if not 1 <= self.level <= 90:
             raise ValueError("level must be between 1 and 90")

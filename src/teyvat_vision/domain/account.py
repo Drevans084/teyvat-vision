@@ -44,6 +44,8 @@ class AccountSnapshot:
 
     def __post_init__(self) -> None:
         self._validate_unique_characters()
+        self._validate_unique_weapons()
+        self._validate_unique_artifacts()
         self._validate_unique_materials()
         self._validate_equipment_owners()
 
@@ -52,6 +54,18 @@ class AccountSnapshot:
 
         if len(set(identities)) != len(identities):
             raise ValueError("duplicate character identity in account snapshot")
+
+    def _validate_unique_weapons(self) -> None:
+        identities = tuple(weapon.identity for weapon in self.weapons.items)
+
+        if len(set(identities)) != len(identities):
+            raise ValueError("duplicate weapon identity in account snapshot")
+
+    def _validate_unique_artifacts(self) -> None:
+        identities = tuple(artifact.identity for artifact in self.artifacts.items)
+
+        if len(set(identities)) != len(identities):
+            raise ValueError("duplicate artifact identity in account snapshot")
 
     def _validate_unique_materials(self) -> None:
         identities = tuple(material.identity for material in self.materials.items)

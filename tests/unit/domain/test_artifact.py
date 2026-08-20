@@ -2,12 +2,24 @@ import pytest
 
 from teyvat_vision.domain.artifact import Artifact, ArtifactSlot, StatValue
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.domain.instance_identity import OwnedItemId
 
 
-def artifact_set_id(key: str = "15001") -> CanonicalId:
+def artifact_set_definition(key: str = "15001") -> CanonicalId:
     return CanonicalId(
         kind=EntityKind.ARTIFACT_SET,
         key=key,
+    )
+
+
+def artifact_id(
+    key: str = "15001",
+    *,
+    instance_key: str = "artifact-000001",
+) -> OwnedItemId:
+    return OwnedItemId(
+        definition=artifact_set_definition(key),
+        instance_key=instance_key,
     )
 
 
@@ -54,8 +66,10 @@ def test_stat_value_rejects_non_finite_values(value: float) -> None:
 
 
 def test_artifact_preserves_valid_account_state() -> None:
+    identity = artifact_id()
+
     artifact = Artifact(
-        set_identity=artifact_set_id(),
+        identity=identity,
         slot=ArtifactSlot.FLOWER,
         rarity=5,
         level=20,
@@ -72,7 +86,8 @@ def test_artifact_preserves_valid_account_state() -> None:
         locked=True,
     )
 
-    assert artifact.set_identity == artifact_set_id()
+    assert artifact.identity == identity
+    assert artifact.identity.definition == artifact_set_definition()
     assert artifact.slot is ArtifactSlot.FLOWER
     assert artifact.rarity == 5
     assert artifact.level == 20
@@ -81,11 +96,35 @@ def test_artifact_preserves_valid_account_state() -> None:
     assert artifact.locked is True
 
 
+def test_two_artifacts_from_same_set_have_distinct_identity() -> None:
+    first = Artifact(
+        identity=artifact_id(instance_key="artifact-000001"),
+        slot=ArtifactSlot.FLOWER,
+        rarity=5,
+        level=20,
+        main_stat=StatValue(key="hp", value=4780.0),
+        substats=(),
+        locked=True,
+    )
+    second = Artifact(
+        identity=artifact_id(instance_key="artifact-000002"),
+        slot=ArtifactSlot.FLOWER,
+        rarity=5,
+        level=20,
+        main_stat=StatValue(key="hp", value=4780.0),
+        substats=(),
+        locked=True,
+    )
+
+    assert first.identity.definition == second.identity.definition
+    assert first.identity != second.identity
+
+
 def test_artifact_can_be_equipped_to_character() -> None:
     owner = character_id()
 
     artifact = Artifact(
-        set_identity=artifact_set_id(),
+        identity=artifact_id(),
         slot=ArtifactSlot.PLUME,
         rarity=5,
         level=20,
@@ -103,7 +142,7 @@ def test_artifact_can_be_equipped_to_character() -> None:
 
 def test_artifact_can_be_unequipped() -> None:
     artifact = Artifact(
-        set_identity=artifact_set_id(),
+        identity=artifact_id(),
         slot=ArtifactSlot.SANDS,
         rarity=5,
         level=0,
@@ -118,12 +157,15 @@ def test_artifact_can_be_unequipped() -> None:
     assert artifact.equipped_to is None
 
 
-def test_artifact_rejects_non_artifact_set_identity() -> None:
+def test_artifact_rejects_non_artifact_owned_item_identity() -> None:
     with pytest.raises(ValueError, match="artifact"):
         Artifact(
-            set_identity=CanonicalId(
-                kind=EntityKind.WEAPON,
-                key="11509",
+            identity=OwnedItemId(
+                definition=CanonicalId(
+                    kind=EntityKind.WEAPON,
+                    key="11509",
+                ),
+                instance_key="weapon-000001",
             ),
             slot=ArtifactSlot.FLOWER,
             rarity=5,
@@ -140,7 +182,7 @@ def test_artifact_rejects_non_artifact_set_identity() -> None:
 def test_artifact_rejects_non_character_equipment_owner() -> None:
     with pytest.raises(ValueError, match="equipped"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.FLOWER,
             rarity=5,
             level=20,
@@ -161,7 +203,7 @@ def test_artifact_rejects_non_character_equipment_owner() -> None:
 def test_artifact_rejects_invalid_rarity(rarity: int) -> None:
     with pytest.raises(ValueError, match="rarity"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.FLOWER,
             rarity=rarity,
             level=0,
@@ -178,7 +220,7 @@ def test_artifact_rejects_invalid_rarity(rarity: int) -> None:
 def test_artifact_rejects_invalid_level(level: int) -> None:
     with pytest.raises(ValueError, match="level"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.FLOWER,
             rarity=5,
             level=level,
@@ -195,7 +237,7 @@ def test_artifact_rejects_invalid_level(level: int) -> None:
 def test_artifact_rejects_non_boolean_locked_value(locked: object) -> None:
     with pytest.raises(ValueError, match="locked"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.FLOWER,
             rarity=5,
             level=0,
@@ -211,7 +253,7 @@ def test_artifact_rejects_non_boolean_locked_value(locked: object) -> None:
 def test_artifact_rejects_more_than_four_substats() -> None:
     with pytest.raises(ValueError, match="substats"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.FLOWER,
             rarity=5,
             level=20,
@@ -233,7 +275,7 @@ def test_artifact_rejects_more_than_four_substats() -> None:
 def test_artifact_rejects_duplicate_substat_keys() -> None:
     with pytest.raises(ValueError, match="duplicate"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.FLOWER,
             rarity=5,
             level=20,
@@ -252,7 +294,7 @@ def test_artifact_rejects_duplicate_substat_keys() -> None:
 def test_artifact_rejects_main_stat_repeated_as_substat() -> None:
     with pytest.raises(ValueError, match="main stat"):
         Artifact(
-            set_identity=artifact_set_id(),
+            identity=artifact_id(),
             slot=ArtifactSlot.SANDS,
             rarity=5,
             level=20,
