@@ -48,6 +48,7 @@ class AccountSnapshot:
         self._validate_unique_artifacts()
         self._validate_unique_materials()
         self._validate_equipment_owners()
+        self._validate_equipment_assignments()
 
     def _validate_unique_characters(self) -> None:
         identities = tuple(character.identity for character in self.characters.items)
@@ -95,3 +96,20 @@ class AccountSnapshot:
                     "artifact equipped_to references a character absent from "
                     "the complete character section"
                 )
+
+    def _validate_equipment_assignments(self) -> None:
+        weapon_owners = [
+            weapon.equipped_to for weapon in self.weapons.items if weapon.equipped_to is not None
+        ]
+
+        if len(set(weapon_owners)) != len(weapon_owners):
+            raise ValueError("character cannot have multiple weapons equipped")
+
+        artifact_assignments = [
+            (artifact.equipped_to, artifact.slot)
+            for artifact in self.artifacts.items
+            if artifact.equipped_to is not None
+        ]
+
+        if len(set(artifact_assignments)) != len(artifact_assignments):
+            raise ValueError("character cannot have multiple artifacts equipped in the same slot")
