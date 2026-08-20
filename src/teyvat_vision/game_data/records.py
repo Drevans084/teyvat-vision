@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
-from teyvat_vision.game_data.classification import WeaponType
+from teyvat_vision.game_data.classification import Rarity, WeaponType
 from teyvat_vision.game_data.localization import LocalizedName
 
 
@@ -28,6 +28,18 @@ def _validate_weapon_type(
         raise ValueError(f"{subject} weapon type must be a canonical WeaponType")
 
 
+def _validate_rarity(
+    rarity: object,
+    *,
+    subject: str,
+) -> None:
+    if rarity is not None and not isinstance(
+        rarity,
+        Rarity,
+    ):
+        raise ValueError(f"{subject} rarity must be a canonical Rarity")
+
+
 @dataclass(frozen=True, slots=True)
 class CharacterDefinition:
     """Static game definition for one canonical character."""
@@ -35,6 +47,7 @@ class CharacterDefinition:
     identity: CanonicalId
     names: tuple[LocalizedName, ...] = ()
     weapon_type: WeaponType | None = None
+    rarity: Rarity | None = None
 
     def __post_init__(self) -> None:
         if self.identity.kind is not EntityKind.CHARACTER:
@@ -47,6 +60,11 @@ class CharacterDefinition:
             subject="character",
         )
 
+        _validate_rarity(
+            self.rarity,
+            subject="character",
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class WeaponDefinition:
@@ -55,6 +73,7 @@ class WeaponDefinition:
     identity: CanonicalId
     names: tuple[LocalizedName, ...] = ()
     weapon_type: WeaponType | None = None
+    rarity: Rarity | None = None
 
     def __post_init__(self) -> None:
         if self.identity.kind is not EntityKind.WEAPON:
@@ -64,6 +83,11 @@ class WeaponDefinition:
 
         _validate_weapon_type(
             self.weapon_type,
+            subject="weapon",
+        )
+
+        _validate_rarity(
+            self.rarity,
             subject="weapon",
         )
 
