@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.game_data.classification import WeaponType
 from teyvat_vision.game_data.localization import LocalizedName
 
 
@@ -15,18 +16,36 @@ def _validate_localized_names(
         raise ValueError("duplicate locale in localized names")
 
 
+def _validate_weapon_type(
+    weapon_type: object,
+    *,
+    subject: str,
+) -> None:
+    if weapon_type is not None and not isinstance(
+        weapon_type,
+        WeaponType,
+    ):
+        raise ValueError(f"{subject} weapon type must be a canonical WeaponType")
+
+
 @dataclass(frozen=True, slots=True)
 class CharacterDefinition:
     """Static game definition for one canonical character."""
 
     identity: CanonicalId
     names: tuple[LocalizedName, ...] = ()
+    weapon_type: WeaponType | None = None
 
     def __post_init__(self) -> None:
         if self.identity.kind is not EntityKind.CHARACTER:
             raise ValueError("character definition identity must have EntityKind.CHARACTER")
 
         _validate_localized_names(self.names)
+
+        _validate_weapon_type(
+            self.weapon_type,
+            subject="character",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,12 +54,18 @@ class WeaponDefinition:
 
     identity: CanonicalId
     names: tuple[LocalizedName, ...] = ()
+    weapon_type: WeaponType | None = None
 
     def __post_init__(self) -> None:
         if self.identity.kind is not EntityKind.WEAPON:
             raise ValueError("weapon definition identity must have EntityKind.WEAPON")
 
         _validate_localized_names(self.names)
+
+        _validate_weapon_type(
+            self.weapon_type,
+            subject="weapon",
+        )
 
 
 @dataclass(frozen=True, slots=True)
