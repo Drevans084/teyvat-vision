@@ -448,4 +448,3 @@ def test_snapshot_evidence_accepts_observations_for_all_represented_subject_kind
     )
 
     assert snapshot_evidence.observations == observations
-    
