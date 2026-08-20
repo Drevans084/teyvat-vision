@@ -17,11 +17,11 @@ class LoadedGameData:
 
 def load_game_data(
     provider: GameDataProvider,
-    source: GameDataSource,
 ) -> LoadedGameData:
     """Load one provider into validated canonical static game data."""
 
     provider_version = provider.version()
+    source = provider.source()
 
     if provider_version != source.version:
         raise ValueError("provider version does not match game data source version")

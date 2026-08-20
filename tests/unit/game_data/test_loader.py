@@ -15,6 +15,13 @@ class Provider:
     def version(self) -> str:
         return "6.8"
 
+    def source(self) -> GameDataSource:
+        return GameDataSource(
+            provider="test-provider",
+            version="6.8",
+            revision="abc123",
+        )
+
     def characters(self) -> tuple[CharacterDefinition, ...]:
         return (
             CharacterDefinition(
@@ -56,6 +63,15 @@ class Provider:
         )
 
 
+class MismatchedSourceProvider(Provider):
+    def source(self) -> GameDataSource:
+        return GameDataSource(
+            provider="test-provider",
+            version="6.7",
+            revision="abc123",
+        )
+
+
 class DuplicateCharacterProvider(Provider):
     def characters(self) -> tuple[CharacterDefinition, ...]:
         definition = CharacterDefinition(
@@ -71,43 +87,30 @@ class DuplicateCharacterProvider(Provider):
         )
 
 
-def source(
-    *,
-    version: str = "6.8",
-    revision: str | None = "abc123",
-) -> GameDataSource:
-    return GameDataSource(
-        provider="test-provider",
-        version=version,
-        revision=revision,
-    )
+class NoRevisionProvider(Provider):
+    def source(self) -> GameDataSource:
+        return GameDataSource(
+            provider="test-provider",
+            version="6.8",
+        )
 
 
 def test_load_game_data_returns_loaded_game_data() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(),
-    )
+    loaded = load_game_data(Provider())
 
     assert isinstance(loaded, LoadedGameData)
 
 
-def test_load_game_data_preserves_source_metadata() -> None:
-    metadata = source()
+def test_load_game_data_preserves_provider_source_metadata() -> None:
+    provider = Provider()
 
-    loaded = load_game_data(
-        Provider(),
-        metadata,
-    )
+    loaded = load_game_data(provider)
 
-    assert loaded.source == metadata
+    assert loaded.source == provider.source()
 
 
 def test_load_game_data_builds_static_dataset_from_provider() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(),
-    )
+    loaded = load_game_data(Provider())
 
     assert loaded.data.version == "6.8"
     assert len(loaded.data.characters) == 1
@@ -117,10 +120,7 @@ def test_load_game_data_builds_static_dataset_from_provider() -> None:
 
 
 def test_load_game_data_preserves_canonical_character_identity() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(),
-    )
+    loaded = load_game_data(Provider())
 
     assert loaded.data.characters[0].identity == CanonicalId(
         kind=EntityKind.CHARACTER,
@@ -129,10 +129,7 @@ def test_load_game_data_preserves_canonical_character_identity() -> None:
 
 
 def test_load_game_data_preserves_canonical_weapon_identity() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(),
-    )
+    loaded = load_game_data(Provider())
 
     assert loaded.data.weapons[0].identity == CanonicalId(
         kind=EntityKind.WEAPON,
@@ -141,10 +138,7 @@ def test_load_game_data_preserves_canonical_weapon_identity() -> None:
 
 
 def test_load_game_data_preserves_canonical_artifact_set_identity() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(),
-    )
+    loaded = load_game_data(Provider())
 
     assert loaded.data.artifact_sets[0].identity == CanonicalId(
         kind=EntityKind.ARTIFACT_SET,
@@ -153,10 +147,7 @@ def test_load_game_data_preserves_canonical_artifact_set_identity() -> None:
 
 
 def test_load_game_data_preserves_canonical_material_identity() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(),
-    )
+    loaded = load_game_data(Provider())
 
     assert loaded.data.materials[0].identity == CanonicalId(
         kind=EntityKind.MATERIAL,
@@ -164,26 +155,17 @@ def test_load_game_data_preserves_canonical_material_identity() -> None:
     )
 
 
-def test_load_game_data_rejects_source_version_mismatch() -> None:
+def test_load_game_data_rejects_provider_source_version_mismatch() -> None:
     with pytest.raises(ValueError, match="version"):
-        load_game_data(
-            Provider(),
-            source(version="6.7"),
-        )
+        load_game_data(MismatchedSourceProvider())
 
 
 def test_load_game_data_propagates_static_dataset_validation() -> None:
     with pytest.raises(ValueError, match="duplicate character"):
-        load_game_data(
-            DuplicateCharacterProvider(),
-            source(),
-        )
+        load_game_data(DuplicateCharacterProvider())
 
 
 def test_load_game_data_allows_source_without_revision() -> None:
-    loaded = load_game_data(
-        Provider(),
-        source(revision=None),
-    )
+    loaded = load_game_data(NoRevisionProvider())
 
     assert loaded.source.revision is None

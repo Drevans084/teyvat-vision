@@ -8,11 +8,19 @@ from teyvat_vision.game_data.records import (
     MaterialDefinition,
     WeaponDefinition,
 )
+from teyvat_vision.game_data.source import GameDataSource
 
 
 class CompleteProvider:
     def version(self) -> str:
         return "6.8"
+
+    def source(self) -> GameDataSource:
+        return GameDataSource(
+            provider="test-provider",
+            version="6.8",
+            revision="abc123",
+        )
 
     def characters(self) -> tuple[CharacterDefinition, ...]:
         return (
@@ -55,6 +63,23 @@ class CompleteProvider:
         )
 
 
+class MissingSourceProvider:
+    def version(self) -> str:
+        return "6.8"
+
+    def characters(self) -> tuple[CharacterDefinition, ...]:
+        return ()
+
+    def weapons(self) -> tuple[WeaponDefinition, ...]:
+        return ()
+
+    def artifact_sets(self) -> tuple[ArtifactSetDefinition, ...]:
+        return ()
+
+    def materials(self) -> tuple[MaterialDefinition, ...]:
+        return ()
+
+
 class IncompleteProvider:
     def version(self) -> str:
         return "6.8"
@@ -70,6 +95,12 @@ def test_complete_provider_satisfies_game_data_provider_contract() -> None:
     assert isinstance(provider, GameDataProvider)
 
 
+def test_provider_without_source_does_not_satisfy_contract() -> None:
+    provider = MissingSourceProvider()
+
+    assert not isinstance(provider, GameDataProvider)
+
+
 def test_incomplete_provider_does_not_satisfy_game_data_provider_contract() -> None:
     provider = IncompleteProvider()
 
@@ -80,6 +111,16 @@ def test_provider_exposes_version() -> None:
     provider: GameDataProvider = CompleteProvider()
 
     assert provider.version() == "6.8"
+
+
+def test_provider_exposes_source_metadata() -> None:
+    provider: GameDataProvider = CompleteProvider()
+
+    source = provider.source()
+
+    assert source.provider == "test-provider"
+    assert source.version == "6.8"
+    assert source.revision == "abc123"
 
 
 def test_provider_exposes_character_definitions() -> None:
