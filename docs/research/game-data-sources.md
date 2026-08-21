@@ -1,9 +1,8 @@
 # Game Data Source Research
 
-- Initial research date: 2026-08-19
-- Last updated: 2026-08-21
+- Research dates: 2026-08-19 through 2026-08-21
 - Purpose: Evaluate external data sources for Teyvat Vision
-- Status: Primary static provider selected and under implementation
+- Status: Initial provider and symbolic-asset research complete
 
 ## Objective
 
@@ -14,442 +13,154 @@ External sources must not become hidden single points of failure.
 
 The canonical architecture should separate:
 
-- Static game-data providers
-- Account/showcase providers
-- Local cache
-- Internal canonical identities
-- Export-specific mappings
+- static game-data providers;
+- account and showcase providers;
+- symbolic asset relationships;
+- external asset resolvers;
+- local metadata and asset caches;
+- internal canonical identities;
+- recognition evidence;
+- export-specific mappings.
 
 The scanner must remain usable when optional network services are unavailable.
 
-## Evaluation Criteria
+## Evaluation criteria
 
 Providers are evaluated against:
 
-- Data freshness
-- Coverage
-- Stable machine identifiers
-- Localization support
-- Asset availability
-- Offline-cache suitability
-- API stability
-- Rate limits
-- Licensing clarity
-- Redistribution rights
-- Dependency risk
-- Suitability as canonical data
-- Suitability as validation data
+- data freshness;
+- coverage;
+- stable machine identifiers;
+- localization support;
+- asset-reference availability;
+- image-resolution availability;
+- offline-cache suitability;
+- API stability;
+- rate limits;
+- licensing clarity;
+- redistribution rights;
+- dependency risk;
+- suitability as canonical data;
+- suitability as validation data.
 
 # 1. AnimeGameData2
 
-Repository:
+Provider identifier:
 
 `Dimbreath/AnimeGameData2`
 
-## Intended Role
+## Intended role
 
-Primary source for raw static Genshin game data.
+Primary provider for raw static Genshin game data and symbolic asset
+relationships.
 
-## Selection
+## Audited snapshot
 
-Teyvat Vision selected AnimeGameData2 after determining that an earlier
-AnimeGameData experiment used the wrong or superseded source.
+The implemented provider and related audits use:
 
-AnimeGameData2 is also the modern upstream source used by Inventory Kamera.
-This provides a proven compatibility reference while allowing Teyvat Vision to
-replace Inventory Kamera's name-based lookup architecture with typed canonical
-records and stable raw game IDs.
+| Property | Value |
+| --- | --- |
+| Game version | `7.0.0` |
+| Revision | `26df1dfbdf05a82bbb1d97506859f3e1c40718d8` |
+| Provider | `Dimbreath/AnimeGameData2` |
 
-## Audited Source Revision
+The exact revision is retained as provider provenance so results can be
+reproduced and later source changes can be compared deterministically.
 
-The Phase 1 provider audit uses one immutable upstream revision:
+## Current state
 
-- Game version: `7.0.0`
-- GitLab project ID: `83871005`
-- Project path: `Dimbreath/animegamedata2`
-- Source revision: `26df1dfbdf05a82bbb1d97506859f3e1c40718d8`
-- Version marker revision:
-  `26df1dfbdf05a82bbb1d97506859f3e1c40718d8`
-- Commit title:
-  `CNRELWin7.0.0_R47482070_S47579390_D47579390`
+AnimeGameData2 contains extracted release data for Genshin Impact.
 
-The local research dataset is stored beneath:
+The audited snapshot provides the tables and text maps required for the
+implemented Teyvat Vision static-data provider.
 
-`datasets/anime-game-data2-live`
+Relevant data areas include:
 
-Raw upstream files and extracted assets must not be committed or redistributed
-without a separate repository and licensing decision.
+- `ExcelBinOutput`;
+- `TextMap`;
+- character configuration and fetter data;
+- weapon configuration;
+- artifact display, codex, and reliquary data;
+- material configuration;
+- symbolic icon fields.
 
-## Audited Source Files
+The local audit checkout is external input. It is not committed to the Teyvat
+Vision repository.
 
-The current investigation uses:
+## Implemented canonical coverage
 
-- `TextMap/TextMapEN.json`
-- `TextMap/TextMap_MediumEN.json`
-- `ExcelBinOutput/AvatarExcelConfigData.json`
-- `ExcelBinOutput/FetterInfoExcelConfigData.json`
-- `ExcelBinOutput/AvatarTalentExcelConfigData.json`
-- `ExcelBinOutput/AvatarSkillExcelConfigData.json`
-- `ExcelBinOutput/DisplayItemExcelConfigData.json`
-- `ExcelBinOutput/ReliquaryCodexExcelConfigData.json`
-- `ExcelBinOutput/ReliquaryExcelConfigData.json`
-- `ExcelBinOutput/WeaponExcelConfigData.json`
-- `ExcelBinOutput/WeaponCodexExcelConfigData.json`
-- `ExcelBinOutput/MaterialExcelConfigData.json`
+The AnimeGameData2 provider currently produces:
 
-## Localization Audit
+| Entity kind | Canonical definitions |
+| --- | ---: |
+| Characters | 122 |
+| Weapons | 263 |
+| Artifact sets | 63 |
+| Materials | 770 |
 
-The English localization sources are complementary:
-
-- `TextMapEN.json`: 585,531 entries
-- `TextMap_MediumEN.json`: 229,324 entries
-- Overlapping hashes: 0
-- Conflicting overlaps: 0
-
-Both maps must be loaded when resolving English source names.
-
-All formal avatar names examined during the character audit were found in
-`TextMap_MediumEN.json`.
-
-## Character Source Audit
-
-`AvatarExcelConfigData.json` contains 165 rows.
-
-Observed `useType` distribution:
-
-- `AVATAR_FORMAL`: 130
-- Missing: 31
-- `AVATAR_ABANDON`: 3
-- `AVATAR_SYNC_TEST`: 1
-
-The audited relational membership rule is:
-
-    Avatar.useType == "AVATAR_FORMAL"
-        +
-    matching FetterInfo.avatarId
-        =
-    canonical character source membership
-
-This produces 122 canonical character source rows.
-
-Exactly eight formal avatar rows do not have matching FetterInfo membership:
-
-- `10000134`: Traveler PlayerBoy crossbow record
-- `10000135`: Traveler PlayerGirl crossbow record
-- `10000901`: Mavuika trial record
-- `10000902`: Hu Tao trial record
-- `10000903`: Ineffa duplicate
-- `10000904`: Columbina duplicate
-- `10000998`: UGC Official Male
-- `10000999`: UGC Official Female
-
-This relational boundary removes those records without depending on:
-
-- Numeric ID cutoffs
-- Trial-name matching
-- UGC-name matching
-- Duplicate-name heuristics
-- Unsupported crossbow canonicalization
-
-The following source records remain canonical members:
-
-- `10000005`: Male Traveler
-- `10000007`: Female Traveler
-- `10000117`: Male Mannequin, `Manekin`
-- `10000118`: Female Mannequin, `Manekina`
-
-Teyvat Vision preserves their distinct raw identities. It does not inherit
-Inventory Kamera's scanner-output decision to collapse or exclude them.
-
-## Inventory Kamera Character Comparison
-
-Inventory Kamera uses the same AnimeGameData2 avatar and FetterInfo tables, but
-its generated character lookup is keyed by normalized GOOD-style names.
-
-Its maintained updater applies several output-oriented filters, including:
-
-- Excluding the Female Traveler source row
-- Excluding IDs above a numeric threshold
-- Excluding `Manekin` and `Manekina`
-- Collapsing duplicate normalized names
-- Depending on talent and skill heuristics for generated lookup metadata
-
-Those choices are understandable for Inventory Kamera's lookup-file format but
-are not appropriate as Teyvat Vision canonical-identity rules.
-
-Teyvat Vision improves this boundary by:
-
-- Using stable raw game IDs as canonical identity anchors
-- Preserving distinct source identities
-- Separating GOOD mappings from canonical identity
-- Using FetterInfo as positive relational membership evidence
-- Validating membership before canonicalizing other fields
-- Preserving source order
-- Rejecting malformed required fields explicitly
-
-## Weapon Source Audit
-
-`WeaponExcelConfigData.json` contains 281 unique weapon IDs.
-
-Observed source weapon types:
-
-- Sword: 69
-- Catalyst: 59
-- Bow: 54
-- Claymore: 51
-- Polearm: 47
-- Crossbow: 1
-
-Observed `rankLevel` distribution:
-
-- 1-star: 15
-- 2-star: 5
-- 3-star: 28
-- 4-star: 145
-- 5-star: 88
-
-Weapon rarity is represented by `rankLevel`. Weapon rows do not provide the
-character-style `qualityType` field.
-
-The five supported canonical weapon classes remain:
-
-- Sword
-- Claymore
-- Polearm
-- Bow
-- Catalyst
-
-The upstream crossbow row does not justify adding a canonical crossbow class.
-
-## Inventory Kamera Weapon Baseline
-
-Inventory Kamera's proven weapon membership behavior is:
-
-    WeaponExcelConfigData row
-        +
-    nonempty name resolved through either English text map
-        =
-    generated weapon lookup membership
-
-Applying that rule to the pinned 7.0.0 source produces:
-
-- Raw weapon rows: 281
-- Name-resolvable rows: 263
-- Name-unmapped rows: 18
-
-The 18 unresolved rows include:
-
-- Ten template or internal records
-- Seven non-template development or unreleased-looking records
-- One fishing-rod record represented as a sword
-- The only upstream crossbow record
-
-Inventory Kamera logs unresolved names as likely unreleased and omits those
-rows.
-
-## Weapon Codex Comparison
-
-`WeaponCodexExcelConfigData.json` was evaluated as a possible relational
-membership source.
-
-Audit results:
-
-- Weapon codex rows: 249
-- Unique codex weapon IDs: 249
-- Duplicate codex weapon IDs: 0
-- Codex IDs without weapon rows: 0
-- Name-resolvable codex members: 249
-- Codex members without resolvable names: 0
-- Name-resolvable weapon rows absent from the codex: 14
-
-The codex is therefore a strict subset of the 263-row Inventory Kamera
-compatibility baseline.
-
-The 14 localized rows omitted by the codex include:
-
-- Three `Prized Isshin Blade` variants
-- `Sword of Narzissenkreuz`
-- `Primordial Jade Cutter`
-- `One Side`
-- `Quartz`
-- `The Other Side`
-- `The Flagstaff`
-- `Deicide`
-- `Amber Bead`
-- `Lost Ballade`
-- `Ebony Bow`
-- `Mirror Breaker`
-
-Some appear to be quest states, duplicates, legacy records, or unreleased
-weapons. Those interpretations do not change the source fact that the codex
-contains less localized information than Inventory Kamera's proven boundary.
-
-## Weapon Membership Decision
-
-Teyvat Vision will preserve the proven Inventory Kamera source boundary:
-
-    WeaponExcelConfigData row
-        +
-    nonempty name resolved through TextMapEN or TextMap_MediumEN
-        =
-    canonical weapon source membership
-
-`WeaponCodexExcelConfigData` will not be required for canonical weapon
-membership.
-
-This decision preserves all 263 localized source rows and prevents the provider
-from silently discarding information that Inventory Kamera retained.
-
-Membership filtering must occur before weapon-type and rarity canonicalization.
-This naturally removes the unresolved crossbow record before the provider
-encounters its unsupported source type.
-
-Canonical weapon records will:
-
-- Use the raw weapon ID as their canonical identity key
-- Map source weapon classes into the five canonical classes
-- Map `rankLevel` values 1 through 5 into canonical rarity
-- Preserve source order
-- Reject malformed required fields
-- Keep localized names as presentation or mapping data rather than identity
-- Keep GOOD keys behind the exporter boundary
-
-## Reproducible Weapon Audit
-
-The repository-owned audit utility is:
-
-`scripts/audits/audit_anime_game_data_weapons.py`
-
-Run it against the pinned local dataset with:
-
-    uv run python scripts/audits/audit_anime_game_data_weapons.py \
-        datasets/anime-game-data2-live
-
-The audit compares:
-
-- Raw weapon-table membership
-- Inventory Kamera-compatible localization membership
-- Weapon codex membership
-- Unmapped internal and template rows
-
-The script and this document preserve the evidence used to select the weapon
-membership rule.
-
-## Artifact Source Audit
-
-The current artifact investigation observed:
-
-- `DisplayItemExcelConfigData.json`: 334 rows
-- Relic-icon display rows: 259
-- Unique display-item suit IDs: 65
-- `ReliquaryCodexExcelConfigData.json`: 129 rows
-- Unique codex suit IDs: 63
-
-Two display-item set IDs do not have codex entries:
-
-- `15004`: Glacier and Snowfield
-- `15012`: Prayers to the Firmament
-
-Every nonzero artifact piece ID referenced by the codex was present in
-`ReliquaryExcelConfigData.json`.
-
-Observed raw artifact slots include:
-
-- `EQUIP_DRESS`
-- `EQUIP_SHOES`
-- `EQUIP_RING`
-- `EQUIP_NECKLACE`
-- `EQUIP_BRACER`
-
-Some prayer sets legitimately contain only a circlet-style slot. Teyvat Vision
-must not assume that every artifact set has five slots.
-
-No final artifact provider membership rule has yet been approved.
-
-## Material Source Audit
-
-`MaterialExcelConfigData.json` contains 10,404 rows.
-
-Inventory Kamera selects six source categories:
-
-- `MATERIAL_AVATAR_MATERIAL`: 474
-- `MATERIAL_EXCHANGE`: 244
-- `MATERIAL_EXP_FRUIT`: 3
-- `MATERIAL_FISH_BAIT`: 13
-- `MATERIAL_WEAPON_EXP_STONE`: 3
-- `MATERIAL_WOOD`: 34
-
-That produces 771 selected rows in the pinned dataset.
-
-One selected wood row has no mapped name:
-
-- ID: `101306`
-- Name hash: `250702940`
-- Icon: `UI_ItemIcon_101306`
-
-Inventory Kamera's six material categories are a proven scanner baseline, but
-they have not yet been adopted as the Teyvat Vision product rule.
+Each entity family has documented membership rules and focused tests covering
+valid records, exclusions, malformed source data, localization, canonical
+classification, and ordering behavior.
 
 ## Strengths
 
-- Very close to upstream game data
-- Frequently updated around game releases
-- Contains stable-looking raw machine identifiers
-- Supports multiple localization maps
-- Suitable for deriving canonical entity metadata
-- Does not require a player account
-- Can be cached locally for offline use
-- Already proven by Inventory Kamera
-- Supports reproducible revision-pinned audits
+- Very close to extracted upstream game data.
+- Updated around game releases.
+- Contains machine-oriented identifiers and relationships.
+- Provides the fields required for canonical entity metadata.
+- Provides symbolic icon references for every canonical provider member in the
+  audited snapshot.
+- Does not require a player account.
+- Can be cached locally for offline use.
+- Allows deterministic parsing from a recorded revision.
+- Has proven useful to existing Genshin tooling.
 
 ## Risks
 
 AnimeGameData2 contains extracted game data rather than a stable application
 API.
 
-Its schemas and record relationships may change when the game changes.
+Its structure may change when the game changes.
 
-Localized source membership may include legacy, quest-state, development, or
-unreleased rows. Teyvat Vision currently preserves those rows when Inventory
-Kamera also preserved them, favoring compatibility and information retention
-over undocumented exclusion heuristics.
-
-Teyvat Vision must not expose AnimeGameData2's raw structure directly to the
+Teyvat Vision must not expose AnimeGameData2’s raw structure directly to the
 rest of the application.
 
-A provider/parser boundary is required.
+All source parsing must remain behind the provider boundary, with explicit
+validation and focused source-contract tests.
 
 ## Licensing
 
-No explicit software or data license has been established for redistributing
-the audited raw AnimeGameData2 dataset.
+No explicit software or data license was identified during the initial
+research pass.
 
-Attribution requests or community usage do not automatically grant
-redistribution rights.
+Attribution requests or community usage do not substitute for a formal
+redistribution license.
 
-### Teyvat Vision Policy
+### Teyvat Vision policy
 
 Until licensing is clarified:
 
-- Teyvat Vision may investigate and develop parsers against the repository.
+- Teyvat Vision may investigate and develop parsers against the dataset.
 - Teyvat Vision must record the exact upstream revision used.
 - Raw AnimeGameData2 files must not automatically be redistributed inside
   Teyvat Vision releases.
-- Extracted game assets must not automatically be committed.
+- Extracted game assets must not automatically be committed to the Teyvat
+  Vision repository.
+- Downloaded images must remain outside Git.
 - Any bundled derived dataset requires a separate licensing and redistribution
   review.
 
-The provider design must allow the source to be replaced if needed.
+The provider design must allow the source to be replaced if necessary.
 
-## Architectural Classification
+## Architectural classification
 
 Candidate status:
 
-**SELECTED PRIMARY STATIC DATA PROVIDER**
+**PRIMARY STATIC DATA PROVIDER**
 
-Technical confidence:
+Confidence:
 
-**High**
+**High for technical usefulness**
 
 Redistribution confidence:
 
@@ -461,13 +172,13 @@ Repository:
 
 `genshindev/api`
 
-## Intended Role
+## Intended role
 
 Secondary static-data source and optional fallback or cross-check provider.
 
-## Current API Model
+## Current API model
 
-genshin.dev explicitly states that it does not interact with the user's game
+genshin.dev explicitly states that it does not interact with the user’s game
 account.
 
 It serves static game data.
@@ -485,14 +196,14 @@ The API also supports optional localization through a language parameter.
 
 ## Strengths
 
-- Straightforward HTTP API
-- Human-friendly normalized records
-- Supports entity listing
-- Supports individual entity retrieval
-- Provides images for some entities
-- Supports localization
-- Explicitly separates static game data from user-account data
-- Easier to consume than raw extracted game files
+- Straightforward HTTP API.
+- Human-friendly normalized records.
+- Supports entity listing.
+- Supports individual entity retrieval.
+- Provides images for some entities.
+- Supports localization.
+- Explicitly separates static game data from user-account data.
+- Easier to consume than raw extracted game files.
 
 ## Weaknesses
 
@@ -504,7 +215,7 @@ identity.
 
 Update timing may lag behind direct extracted game-data sources.
 
-Teyvat Vision must not assume that every entity or every new game field is
+Teyvat Vision must not assume that every entity, field, or new game version is
 available immediately after a patch.
 
 ## Licensing
@@ -519,7 +230,7 @@ requirements of that license before redistribution.
 Consuming the API over HTTP is architecturally different from copying its
 repository data or assets into Teyvat Vision.
 
-## Architectural Classification
+## Architectural classification
 
 Candidate status:
 
@@ -527,25 +238,35 @@ Candidate status:
 
 Potential uses:
 
-- Cross-checking names and metadata
-- Optional fallback metadata
-- Convenient localization
-- Development-time comparison
-- Potential image retrieval
+- cross-checking names and metadata;
+- optional fallback metadata;
+- convenient localization;
+- development-time comparison;
+- potential fallback image resolution.
 
 It should not initially be the sole source of canonical identity.
 
 # 3. Enka.Network
 
-Repository:
+Repository and documentation:
 
-`EnkaNetwork/API-docs`
+- `EnkaNetwork/API-docs`
+- <https://api.enka.network/>
+- <https://github.com/EnkaNetwork/API-docs>
+- <https://github.com/EnkaNetwork/API-docs/blob/master/docs/gi/api.md#icons-and-images>
 
-## Intended Role
+## Intended roles
 
-Optional public-account/showcase provider.
+Enka has two separate potential roles:
 
-Enka is not a full account inventory source.
+1. optional public-account and showcase provider;
+2. optional symbolic asset resolver.
+
+These roles belong behind different contracts and must not be combined into a
+single generic provider.
+
+Enka is not the canonical static game-data provider and is not a full account
+inventory source.
 
 ## UID API
 
@@ -555,13 +276,13 @@ The documented UID endpoint is conceptually:
 
 A successful response may contain:
 
-- `playerInfo`
-- `avatarInfoList`
+- `playerInfo`;
+- `avatarInfoList`.
 
-If `avatarInfoList` is absent, the player's Character Showcase is closed or
+If `avatarInfoList` is absent, the player’s Character Showcase is closed or
 does not expose characters.
 
-## Request Requirements and Constraints
+## Request requirements and constraints
 
 Enka documentation requests a custom `User-Agent`.
 
@@ -576,26 +297,27 @@ querying the same UID.
 
 Documented response conditions include:
 
-- Invalid UID
-- Missing player
-- Game maintenance
-- Rate limiting
-- General server errors
-- Service failures
+- invalid UID;
+- missing player;
+- game maintenance;
+- rate limiting;
+- general server errors;
+- service failures.
 
-Teyvat Vision must handle these explicitly if Enka support is implemented.
+Teyvat Vision must handle these explicitly if Enka account support is
+implemented.
 
-## Strengths
+## Account-data strengths
 
-- Provides structured public showcase data
-- Useful for independently validating showcased characters
-- Useful for verifying showcased weapons and artifacts
-- Can reduce redundant recognition where the data corresponds to visible
-  showcased characters
-- Can provide account or player metadata
-- Does not require private HoYoLAB authentication cookies
+- Provides structured public showcase data.
+- Can independently validate showcased characters.
+- Can verify showcased weapons and artifacts.
+- Can reduce redundant recognition when API data is proven to correspond to
+  visible showcased equipment.
+- Can provide account and player metadata.
+- Does not require private HoYoLAB authentication cookies.
 
-## Limitations
+## Account-data limitations
 
 Enka only sees data exposed through public showcase mechanisms.
 
@@ -603,65 +325,206 @@ It cannot prove that an unlisted character or item is absent from the account.
 
 It cannot replace scanning for:
 
-- Full weapon inventory
-- Full artifact inventory
-- Materials
-- Characters not exposed in the showcase
-- Other private account state
+- full weapon inventory;
+- full artifact inventory;
+- materials;
+- characters not exposed in the showcase;
+- other private account state.
 
-Missing Enka data must never be interpreted as non-ownership.
+Missing Enka account data must never be interpreted as non-ownership.
 
-## Ground-Truth Policy
+## Account ground-truth policy
 
-Enka data may be useful as:
+Enka account data may be useful as:
 
-- `api_verified` fixture provenance
-- Cross-validation for showcased equipment
-- Development diagnostics
+- `api_verified` fixture provenance;
+- cross-validation for showcased equipment;
+- development diagnostics.
 
-It should not automatically override contradictory directly visible game
-state.
+It must not automatically override contradictory directly visible game state.
 
 Disagreements must be surfaced rather than silently merged.
 
-## Architectural Classification
+## Icon and image endpoint
 
-Candidate status:
+Official Enka documentation states that character, weapon, and artifact icons
+can be requested through:
+
+    https://enka.network/ui/[icon_name].png
+
+AnimeGameData2 provides the symbolic reference. Enka may resolve that reference
+to image content.
+
+Enka does not determine which references belong to canonical entities.
+
+No documented bulk icon archive or complete icon-export endpoint was
+identified during this research.
+
+## Audited symbolic-reference resolution
+
+A sequential HTTP `HEAD` audit checked all 1,811 unique symbolic references
+derived from the AnimeGameData2 7.0.0 snapshot.
+
+| Entity group | Unique references | Resolved | Unresolved | Coverage |
+| --- | ---: | ---: | ---: | ---: |
+| Characters | 244 | 244 | 0 | 100.00% |
+| Artifact pieces | 299 | 299 | 0 | 100.00% |
+| Weapons | 500 | 492 | 8 | 98.40% |
+| Materials | 768 | 594 | 174 | 77.34% |
+| **Total** | **1,811** | **1,629** | **182** | **89.95%** |
+
+All successful responses were reported as images.
+
+The official documentation explicitly describes character, weapon, and
+artifact images. It does not promise complete material-icon coverage.
+
+Observed material resolution must therefore be treated as opportunistic rather
+than guaranteed.
+
+## Asset-resolution policy
+
+Enka availability must never alter AnimeGameData2 canonical membership.
+
+The asset layer must preserve symbolic references even when Enka returns
+`404`.
+
+A resolver result must distinguish:
+
+- resolved image;
+- unresolved reference;
+- transient network failure;
+- invalid response.
+
+A missing Enka image means the external resolver could not currently provide
+the asset. It does not mean the symbolic relationship or canonical entity is
+invalid.
+
+## Architectural classification
+
+Account candidate status:
 
 **OPTIONAL ACCOUNT VALIDATION PROVIDER**
 
-It is not a core scanner dependency.
+Asset candidate status:
 
-# 4. Local Cache
+**OPTIONAL ASSET RESOLVER**
 
-## Intended Role
+Enka is not a core scanner dependency.
+
+# 4. Symbolic asset relationships
+
+## Intended role
+
+Static providers associate canonical subjects with typed symbolic references.
+
+The audited AnimeGameData2 fields support:
+
+| Asset role | Entity kind |
+| --- | --- |
+| `character_icon` | Character |
+| `character_side_icon` | Character |
+| `weapon_icon` | Weapon |
+| `weapon_awakened_icon` | Weapon |
+| `material_icon` | Material |
+| `artifact_flower` | Artifact set |
+| `artifact_plume` | Artifact set |
+| `artifact_sands` | Artifact set |
+| `artifact_goblet` | Artifact set |
+| `artifact_circlet` | Artifact set |
+
+## Audited coverage
+
+The AnimeGameData2 snapshot produced:
+
+| Measurement | Result |
+| --- | ---: |
+| Subject and reference relationships | 1,839 |
+| Unique symbolic references | 1,811 |
+| Invalid or blank references | 0 |
+| Missing referenced reliquary piece IDs | 0 |
+| Subject-role pairs with multiple references | 0 |
+| References shared by multiple subjects | 14 |
+| References shared across entity kinds | 0 |
+
+Every expected canonical subject has the required role coverage.
+
+Four circlet-only artifact sets correctly omit the other four artifact roles.
+
+## Identity rule
+
+A symbolic asset reference is not a canonical identity.
+
+Fourteen references are shared by multiple subjects. Therefore:
+
+- global reference uniqueness must not be required;
+- an icon match may produce multiple canonical candidates;
+- every subject-and-role relationship must be preserved;
+- recognition must combine icon evidence with structural, visual, and
+  canonical constraints.
+
+# 5. Local caches
+
+## Static-data cache
 
 Teyvat Vision requires a local static-data cache regardless of which upstream
 provider is selected.
 
-The local cache should allow normal recognition and export to continue when
-network services are unavailable.
+The static-data cache should allow normal recognition and export to continue
+when network services are unavailable.
 
 Cached records should retain provenance such as:
 
-- Provider
-- Upstream version
-- Upstream commit or source hash
-- Fetch timestamp
-- Local schema version
-- Transformation version
+- provider;
+- upstream version;
+- upstream revision or source hash;
+- fetch timestamp;
+- local schema version;
+- transformation version.
 
 The application must be able to determine which source produced a canonical
 record.
 
-## Cache Rule
+## External asset cache
 
-The local cache is not an independent source of truth.
+Downloaded images belong in a separate external asset cache.
 
-It is a persisted representation of data obtained from a specific versioned
-provider.
+The asset cache must:
 
-# 5. Provider Boundary
+- remain outside Git;
+- be reproducible from a symbolic-reference manifest;
+- deduplicate downloads by symbolic reference or verified content hash;
+- preserve every canonical subject-and-role relationship;
+- support resumable downloads;
+- retain unresolved references;
+- record resolver provenance;
+- validate successful image responses;
+- permit Enka to be replaced by another resolver.
+
+A future cache manifest should retain:
+
+- canonical subject;
+- asset role;
+- symbolic reference;
+- source URL;
+- resolver;
+- response status;
+- content type;
+- content length;
+- SHA-256 digest;
+- retrieval timestamp;
+- local cache key.
+
+Licensing, upstream terms, and redistribution rights must be reviewed before
+any cached image collection is distributed.
+
+## Cache rule
+
+Neither cache is an independent source of truth.
+
+A cache is a persisted representation of data or content obtained from a
+specific versioned provider or resolver.
+
+# 6. Provider and resolver boundaries
 
 Static data should be accessed through a provider interface rather than
 directly throughout the application.
@@ -670,6 +533,7 @@ Conceptually:
 
     GameDataProvider
         version()
+        source()
         characters()
         weapons()
         artifact_sets()
@@ -689,15 +553,30 @@ Account data should use a separate contract:
 
 Potential implementations:
 
-    EnkaProvider
-    FutureOfficialProvider
+    EnkaAccountDataProvider
+    FutureOfficialAccountProvider
 
-Static game data and user-account data are different trust domains and should
-not share one generic provider abstraction.
+External image resolution should use another contract:
 
-# 6. Canonical Identity Strategy
+    AssetResolver
+        resolve(reference)
 
-No external provider key should automatically become Teyvat Vision's primary
+Potential implementations:
+
+    EnkaAssetResolver
+    LocalAssetCacheResolver
+    FutureAlternativeAssetResolver
+
+Static game data, account data, and external image resolution are different
+trust domains.
+
+They must not share one generic provider abstraction.
+
+Static game-data loading must never perform network asset resolution.
+
+# 7. Canonical identity strategy
+
+No external provider key should automatically become Teyvat Vision’s primary
 identity.
 
 The intended mapping is:
@@ -711,7 +590,7 @@ The intended mapping is:
     external mappings
         ├── GOOD key
         ├── display or localized name
-        ├── visual asset name
+        ├── typed symbolic asset relationship
         └── provider-specific key
 
 Where a stable raw game ID exists, it should normally anchor the canonical
@@ -719,82 +598,113 @@ identity.
 
 Localized display strings must never be primary identifiers.
 
-Provider-specific slugs must not become primary identifiers unless evidence
-shows they are the actual stable game identifier.
+Provider-specific slugs and symbolic asset names must not become primary
+identifiers.
 
-# 7. Source Disagreement Policy
+# 8. Source disagreement policy
 
 If two providers disagree, Teyvat Vision must not silently choose whichever
 response arrived last.
 
 A disagreement should retain:
 
-- Source A value
-- Source B value
-- Source versions
-- Source timestamps
-- Mapping decision
-- Reason for the decision
+- source A value;
+- source B value;
+- source versions;
+- source timestamps;
+- mapping decision;
+- reason for the decision.
 
 Canonicalization rules must be deterministic and testable.
 
-# 8. Recommended Provider Ranking
+Resolver availability is not a canonical-data disagreement. It is a separate
+external-resolution outcome.
+
+# 9. Recommended provider ranking
 
 Current recommendation:
 
 1. AnimeGameData2
-   - Selected primary static provider
-   - Closest to raw game data
-   - Proven by Inventory Kamera
-   - Isolated behind a parser and provenance boundary
+   - Primary static data provider.
+   - Closest to extracted game data.
+   - Supplies canonical metadata and symbolic asset relationships.
+   - Parser and licensing risks remain isolated.
 
-2. Local Cache
-   - Mandatory operational layer
-   - Enables offline scanning
-   - Retains provider provenance
+2. Local caches
+   - Mandatory operational layers.
+   - Enable offline scanning.
+   - Retain provider and resolver provenance.
+   - External binary assets remain outside Git.
 
 3. genshin.dev
-   - Secondary static provider
-   - Useful cross-check and convenience source
-   - Not canonical
+   - Secondary static provider.
+   - Useful cross-check and convenience source.
+   - Not initially canonical.
 
 4. Enka.Network
-   - Optional public-account validation
-   - Never required for complete scanning
-   - Never proof of non-ownership
+   - Optional public-account validation provider.
+   - Optional asset resolver.
+   - Never required for canonical membership or complete scanning.
+   - Never proof of non-ownership.
 
-# 9. Dependencies We Explicitly Reject as Foundational
+# 10. Dependencies explicitly rejected as foundational
 
 Teyvat Vision must not make the following foundational requirements:
 
-- Private HoYoLAB session cookies
-- Reverse-engineered authenticated account APIs
-- Packet-capture-based account extraction
-- Enka availability
-- genshin.dev availability
-- Any single community HTTP service
-- Display-name-based canonical identities
+- private HoYoLAB session cookies;
+- reverse-engineered authenticated account APIs;
+- packet-capture-based account extraction;
+- Enka availability;
+- genshin.dev availability;
+- any single community HTTP service;
+- display-name-based canonical identities;
+- symbolic-asset-based canonical identities;
+- network access during static game-data loading;
+- OCR as the default or foundational recognition architecture.
 
-# 10. Open Questions
+Inventory Kamera’s captured screenshots and Tesseract-derived results may
+support external regression research, but they are not static game-data input
+and must not define the new recognition architecture.
 
-Remaining research questions include:
+PaddleOCR or another OCR engine may only be considered later through a
+separate, evidence-backed architectural decision.
 
-- How artifact set and piece identities map to GOOD keys
-- How weapon and character IDs map to current Genshin Optimizer keys
-- Which material categories should exist in the Teyvat Vision native model
-- Whether icon filenames provide a sufficiently stable bridge between
-  screenshots and canonical records
-- Whether Teyvat Vision may legally redistribute any derived static dataset
-- Whether a build-time fetch or generation workflow is preferable to runtime
-  static-data downloads
-- How cache migrations should work when the local canonical schema changes
-- Whether later game versions preserve the audited membership relationships
-- How localization failures should be represented without corrupting an
-  existing cache
+# 11. Remaining questions
 
-# 11. Architectural Direction
+The initial provider and symbolic-asset research resolved:
 
-The current evidence supports the following architecture:
+- the minimum AnimeGameData2 tables required for the current canonical entity
+  families;
+- character membership behavior;
+- weapon membership behavior;
+- artifact-set and slot membership behavior;
+- material membership behavior;
+- the available symbolic asset fields;
+- typed symbolic asset roles;
+- current Enka resolution coverage;
+- the requirement to keep canonical membership independent of resolver
+  availability;
+- the requirement to keep downloaded assets outside Git.
+
+Remaining questions include:
+
+- whether all selected raw game IDs remain stable across future game versions;
+- how all canonical identities map to current GOOD keys;
+- whether Teyvat Vision may legally redistribute any derived static dataset;
+- whether any external image content may legally be redistributed;
+- how static-data cache migrations should work when the canonical schema
+  changes;
+- how external asset-cache migrations and invalidation should work;
+- whether Enka or another provider later publishes a supported bulk asset
+  endpoint;
+- which visual comparison techniques perform best against representative live
+  captures;
+- which variable fields, if any, cannot be recovered reliably without a
+  separately evaluated text-recognition component.
+
+# 12. Architectural direction
+
+The current evidence supports this static-data path:
 
     Upstream Static Sources
         ↓
@@ -802,18 +712,45 @@ The current evidence supports the following architecture:
         ↓
     Canonicalization and Validation
         ↓
-    Versioned Local Cache
+    Canonical Definitions and Symbolic Asset Relationships
+        ↓
+    Versioned Local Static-Data Cache
         ↓
     Teyvat Vision Domain
 
-Optional account providers operate beside this path:
+Optional image resolution operates beside the static-data path:
 
-    Enka
+    Symbolic Asset Reference
+        ↓
+    AssetResolver
+        ↓
+    External Asset Cache
+        ↓
+    Visual Recognition Evidence
+
+Optional account providers use a separate path:
+
+    Enka or Future Account Source
         ↓
     AccountDataProvider
         ↓
-    Optional validation or enrichment
+    Optional Validation and Enrichment
 
-Neither path should write GOOD records directly.
+None of these paths should write GOOD records directly.
 
 GOOD serialization remains a downstream exporter concern.
+
+# 13. Supporting research records
+
+Detailed reproducible findings are recorded in:
+
+- `docs/research/anime-game-data2-artifact-audit.md`;
+- `docs/research/anime-game-data2-material-audit.md`;
+- `docs/research/anime-game-data2-asset-audit.md`;
+- `scripts/audits/audit_anime_game_data_artifacts.py`;
+- `scripts/audits/audit_anime_game_data_materials.py`;
+- `scripts/audits/audit_anime_game_data_weapons.py`;
+- `scripts/audits/audit_anime_game_data_assets.py`.
+
+External AnimeGameData2 snapshots, resolved images, and personal Inventory
+Kamera evidence are intentionally excluded from the repository.
