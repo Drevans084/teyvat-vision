@@ -1,7 +1,7 @@
 from typing import runtime_checkable
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
-from teyvat_vision.game_data.assets import GameDataAsset
+from teyvat_vision.game_data.assets import AssetRole, GameDataAsset
 from teyvat_vision.game_data.provider import GameDataProvider
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
@@ -70,6 +70,7 @@ class CompleteProvider:
                     kind=EntityKind.CHARACTER,
                     key="10000002",
                 ),
+                role=AssetRole.CHARACTER_ICON,
                 reference="UI_AvatarIcon_Ayaka",
             ),
         )
@@ -213,4 +214,5 @@ def test_provider_exposes_assets() -> None:
         kind=EntityKind.CHARACTER,
         key="10000002",
     )
+    assert assets[0].role is AssetRole.CHARACTER_ICON
     assert assets[0].reference == "UI_AvatarIcon_Ayaka"
