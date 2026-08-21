@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from teyvat_vision.game_data.assets import GameDataAsset
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
     CharacterDefinition,
@@ -19,6 +20,7 @@ class StaticGameData:
     weapons: tuple[WeaponDefinition, ...]
     artifact_sets: tuple[ArtifactSetDefinition, ...]
     materials: tuple[MaterialDefinition, ...]
+    assets: tuple[GameDataAsset, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.version.strip():
@@ -31,6 +33,7 @@ class StaticGameData:
         self._validate_unique_weapons()
         self._validate_unique_artifact_sets()
         self._validate_unique_materials()
+        self._validate_assets()
 
     def _validate_unique_characters(self) -> None:
         identities = tuple(definition.identity for definition in self.characters)
@@ -55,3 +58,15 @@ class StaticGameData:
 
         if len(set(identities)) != len(identities):
             raise ValueError("duplicate material identity in static game data")
+
+    def _validate_assets(self) -> None:
+        known_subjects = {
+            *(definition.identity for definition in self.characters),
+            *(definition.identity for definition in self.weapons),
+            *(definition.identity for definition in self.artifact_sets),
+            *(definition.identity for definition in self.materials),
+        }
+
+        for asset in self.assets:
+            if asset.subject not in known_subjects:
+                raise ValueError("asset subject must exist in static game data")

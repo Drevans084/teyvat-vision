@@ -1,6 +1,7 @@
 import pytest
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.game_data.assets import GameDataAsset
 from teyvat_vision.game_data.loader import LoadedGameData, load_game_data
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
@@ -59,6 +60,17 @@ class Provider:
                     kind=EntityKind.MATERIAL,
                     key="104003",
                 )
+            ),
+        )
+
+    def assets(self) -> tuple[GameDataAsset, ...]:
+        return (
+            GameDataAsset(
+                subject=CanonicalId(
+                    kind=EntityKind.CHARACTER,
+                    key="10000002",
+                ),
+                reference="UI_AvatarIcon_Ayaka",
             ),
         )
 

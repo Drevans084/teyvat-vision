@@ -2,6 +2,7 @@
 
 from typing import Protocol, runtime_checkable
 
+from teyvat_vision.game_data.assets import GameDataAsset
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
     CharacterDefinition,
@@ -37,4 +38,8 @@ class GameDataProvider(Protocol):
 
     def materials(self) -> tuple[MaterialDefinition, ...]:
         """Return canonical material definitions."""
+        ...
+
+    def assets(self) -> tuple[GameDataAsset, ...]:
+        """Return canonical asset references."""
         ...

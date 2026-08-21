@@ -32,6 +32,7 @@ def load_game_data(
         weapons=provider.weapons(),
         artifact_sets=provider.artifact_sets(),
         materials=provider.materials(),
+        assets=provider.assets(),
     )
 
     return LoadedGameData(

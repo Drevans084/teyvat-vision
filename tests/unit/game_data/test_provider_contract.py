@@ -1,6 +1,7 @@
 from typing import runtime_checkable
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
+from teyvat_vision.game_data.assets import GameDataAsset
 from teyvat_vision.game_data.provider import GameDataProvider
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
@@ -62,10 +63,47 @@ class CompleteProvider:
             ),
         )
 
+    def assets(self) -> tuple[GameDataAsset, ...]:
+        return (
+            GameDataAsset(
+                subject=CanonicalId(
+                    kind=EntityKind.CHARACTER,
+                    key="10000002",
+                ),
+                reference="UI_AvatarIcon_Ayaka",
+            ),
+        )
+
 
 class MissingSourceProvider:
     def version(self) -> str:
         return "6.8"
+
+    def characters(self) -> tuple[CharacterDefinition, ...]:
+        return ()
+
+    def weapons(self) -> tuple[WeaponDefinition, ...]:
+        return ()
+
+    def artifact_sets(self) -> tuple[ArtifactSetDefinition, ...]:
+        return ()
+
+    def materials(self) -> tuple[MaterialDefinition, ...]:
+        return ()
+
+    def assets(self) -> tuple[GameDataAsset, ...]:
+        return ()
+
+
+class MissingAssetsProvider:
+    def version(self) -> str:
+        return "6.8"
+
+    def source(self) -> GameDataSource:
+        return GameDataSource(
+            provider="test-provider",
+            version="6.8",
+        )
 
     def characters(self) -> tuple[CharacterDefinition, ...]:
         return ()
@@ -97,6 +135,12 @@ def test_complete_provider_satisfies_game_data_provider_contract() -> None:
 
 def test_provider_without_source_does_not_satisfy_contract() -> None:
     provider = MissingSourceProvider()
+
+    assert not isinstance(provider, GameDataProvider)
+
+
+def test_provider_without_assets_does_not_satisfy_contract() -> None:
+    provider = MissingAssetsProvider()
 
     assert not isinstance(provider, GameDataProvider)
 
@@ -157,3 +201,16 @@ def test_provider_exposes_material_definitions() -> None:
 
     assert len(definitions) == 1
     assert definitions[0].identity.kind is EntityKind.MATERIAL
+
+
+def test_provider_exposes_assets() -> None:
+    provider: GameDataProvider = CompleteProvider()
+
+    assets = provider.assets()
+
+    assert len(assets) == 1
+    assert assets[0].subject == CanonicalId(
+        kind=EntityKind.CHARACTER,
+        key="10000002",
+    )
+    assert assets[0].reference == "UI_AvatarIcon_Ayaka"
