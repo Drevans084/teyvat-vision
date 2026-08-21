@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from teyvat_vision.domain.artifact import ArtifactSlot
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
 from teyvat_vision.game_data.classification import Rarity, WeaponType
 from teyvat_vision.game_data.localization import LocalizedName
@@ -51,6 +52,19 @@ def _validate_rarities(
 
     if len(set(rarities)) != len(rarities):
         raise ValueError(f"{subject} rarities must not contain duplicate values")
+
+
+def _validate_slots(
+    slots: tuple[object, ...],
+    *,
+    subject: str,
+) -> None:
+    for slot in slots:
+        if not isinstance(slot, ArtifactSlot):
+            raise ValueError(f"{subject} slots must contain canonical ArtifactSlot values")
+
+    if len(set(slots)) != len(slots):
+        raise ValueError(f"{subject} slots must not contain duplicate values")
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +126,7 @@ class ArtifactSetDefinition:
     identity: CanonicalId
     names: tuple[LocalizedName, ...] = ()
     rarities: tuple[Rarity, ...] = ()
+    slots: tuple[ArtifactSlot, ...] = ()
 
     def __post_init__(self) -> None:
         if self.identity.kind is not EntityKind.ARTIFACT_SET:
@@ -121,6 +136,11 @@ class ArtifactSetDefinition:
 
         _validate_rarities(
             self.rarities,
+            subject="artifact set",
+        )
+
+        _validate_slots(
+            self.slots,
             subject="artifact set",
         )
 

@@ -145,6 +145,17 @@ def validate_snapshot_against_game_data(
                 )
             )
 
+        if artifact_set_definition.slots and artifact.slot not in artifact_set_definition.slots:
+            issues.append(
+                ValidationIssue(
+                    code="artifact_slot_mismatch",
+                    severity=ValidationSeverity.ERROR,
+                    message=("artifact slot is not available for its artifact set"),
+                    subject=artifact.identity,
+                    field="slot",
+                )
+            )
+
     for material in snapshot.materials.items:
         if material.identity not in material_identities:
             issues.append(
