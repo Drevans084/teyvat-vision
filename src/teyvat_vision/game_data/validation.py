@@ -60,7 +60,9 @@ def validate_snapshot_against_game_data(
 
     character_definitions = {definition.identity: definition for definition in game_data.characters}
     weapon_definitions = {definition.identity: definition for definition in game_data.weapons}
-    artifact_set_identities = {definition.identity for definition in game_data.artifact_sets}
+    artifact_set_definitions = {
+        definition.identity: definition for definition in game_data.artifact_sets
+    }
     material_identities = {definition.identity for definition in game_data.materials}
 
     issues: list[ValidationIssue] = []
@@ -116,7 +118,9 @@ def validate_snapshot_against_game_data(
             )
 
     for artifact in snapshot.artifacts.items:
-        if artifact.identity.definition not in artifact_set_identities:
+        artifact_set_definition = artifact_set_definitions.get(artifact.identity.definition)
+
+        if artifact_set_definition is None:
             issues.append(
                 ValidationIssue(
                     code="unknown_artifact_set",
@@ -124,6 +128,20 @@ def validate_snapshot_against_game_data(
                     message=("artifact set definition identity is absent from static game data"),
                     subject=artifact.identity,
                     field="identity.definition",
+                )
+            )
+            continue
+
+        if artifact_set_definition.rarities and artifact.rarity not in {
+            rarity.value for rarity in artifact_set_definition.rarities
+        }:
+            issues.append(
+                ValidationIssue(
+                    code="artifact_rarity_mismatch",
+                    severity=ValidationSeverity.ERROR,
+                    message=("artifact rarity is not available for its artifact set"),
+                    subject=artifact.identity,
+                    field="rarity",
                 )
             )
 

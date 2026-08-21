@@ -40,6 +40,19 @@ def _validate_rarity(
         raise ValueError(f"{subject} rarity must be a canonical Rarity")
 
 
+def _validate_rarities(
+    rarities: tuple[object, ...],
+    *,
+    subject: str,
+) -> None:
+    for rarity in rarities:
+        if not isinstance(rarity, Rarity):
+            raise ValueError(f"{subject} rarities must contain canonical Rarity values")
+
+    if len(set(rarities)) != len(rarities):
+        raise ValueError(f"{subject} rarities must not contain duplicate values")
+
+
 @dataclass(frozen=True, slots=True)
 class CharacterDefinition:
     """Static game definition for one canonical character."""
@@ -98,12 +111,18 @@ class ArtifactSetDefinition:
 
     identity: CanonicalId
     names: tuple[LocalizedName, ...] = ()
+    rarities: tuple[Rarity, ...] = ()
 
     def __post_init__(self) -> None:
         if self.identity.kind is not EntityKind.ARTIFACT_SET:
             raise ValueError("artifact set definition identity must have EntityKind.ARTIFACT_SET")
 
         _validate_localized_names(self.names)
+
+        _validate_rarities(
+            self.rarities,
+            subject="artifact set",
+        )
 
 
 @dataclass(frozen=True, slots=True)
