@@ -21,7 +21,6 @@ from teyvat_vision.game_data.validation import (
     validate_snapshot_against_game_data,
 )
 
-
 CHARACTER_ID = CanonicalId(
     kind=EntityKind.CHARACTER,
     key="10000047",

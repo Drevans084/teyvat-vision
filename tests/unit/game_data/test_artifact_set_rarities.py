@@ -4,7 +4,6 @@ from teyvat_vision.domain.identity import CanonicalId, EntityKind
 from teyvat_vision.game_data.classification import Rarity
 from teyvat_vision.game_data.records import ArtifactSetDefinition
 
-
 ARTIFACT_SET_ID = CanonicalId(
     kind=EntityKind.ARTIFACT_SET,
     key="15001",

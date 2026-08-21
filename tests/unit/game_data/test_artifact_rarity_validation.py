@@ -14,7 +14,6 @@ from teyvat_vision.game_data.validation import (
     validate_snapshot_against_game_data,
 )
 
-
 ARTIFACT_SET_ID = CanonicalId(
     kind=EntityKind.ARTIFACT_SET,
     key="15001",
