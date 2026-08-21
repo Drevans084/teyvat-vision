@@ -224,8 +224,8 @@ def main() -> None:
 
     name_to_suit_ids: dict[str, set[int]] = defaultdict(set)
 
-    for suit_id, names in suit_names.items():
-        for name in names:
+    for suit_id, localized_names in suit_names.items():
+        for name in localized_names:
             name_to_suit_ids[name].add(suit_id)
 
     duplicate_names = {

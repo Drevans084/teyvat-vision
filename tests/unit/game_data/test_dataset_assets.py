@@ -1,7 +1,7 @@
 import pytest
 
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
-from teyvat_vision.game_data.assets import GameDataAsset
+from teyvat_vision.game_data.assets import AssetRole, GameDataAsset
 from teyvat_vision.game_data.dataset import StaticGameData
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
@@ -59,6 +59,7 @@ def test_static_game_data_preserves_assets() -> None:
             kind=EntityKind.CHARACTER,
             key="10000047",
         ),
+        role=AssetRole.CHARACTER_ICON,
         reference="UI_AvatarIcon_Kazuha",
     )
 
@@ -79,11 +80,13 @@ def test_static_game_data_allows_multiple_assets_for_same_subject() -> None:
         assets=(
             GameDataAsset(
                 subject=subject,
+                role=AssetRole.CHARACTER_ICON,
                 reference="UI_AvatarIcon_Kazuha",
             ),
             GameDataAsset(
                 subject=subject,
-                reference="UI_AvatarIcon_Kazuha_Card",
+                role=AssetRole.CHARACTER_SIDE_ICON,
+                reference="UI_AvatarIcon_Side_Kazuha",
             ),
         ),
     )
@@ -100,6 +103,7 @@ def test_static_game_data_rejects_asset_for_unknown_character() -> None:
                         kind=EntityKind.CHARACTER,
                         key="unknown-character",
                     ),
+                    role=AssetRole.CHARACTER_ICON,
                     reference="unknown-character-asset",
                 ),
             ),
@@ -115,6 +119,7 @@ def test_static_game_data_rejects_asset_for_unknown_weapon() -> None:
                         kind=EntityKind.WEAPON,
                         key="unknown-weapon",
                     ),
+                    role=AssetRole.WEAPON_ICON,
                     reference="unknown-weapon-asset",
                 ),
             ),
@@ -130,6 +135,7 @@ def test_static_game_data_rejects_asset_for_unknown_artifact_set() -> None:
                         kind=EntityKind.ARTIFACT_SET,
                         key="unknown-artifact-set",
                     ),
+                    role=AssetRole.ARTIFACT_FLOWER,
                     reference="unknown-artifact-set-asset",
                 ),
             ),
@@ -145,6 +151,7 @@ def test_static_game_data_rejects_asset_for_unknown_material() -> None:
                         kind=EntityKind.MATERIAL,
                         key="unknown-material",
                     ),
+                    role=AssetRole.MATERIAL_ICON,
                     reference="unknown-material-asset",
                 ),
             ),

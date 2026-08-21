@@ -1,5 +1,5 @@
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
-from teyvat_vision.game_data.assets import GameDataAsset
+from teyvat_vision.game_data.assets import AssetRole, GameDataAsset
 from teyvat_vision.game_data.loader import load_game_data
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
@@ -68,6 +68,7 @@ class Provider:
                     kind=EntityKind.CHARACTER,
                     key="10000047",
                 ),
+                role=AssetRole.CHARACTER_ICON,
                 reference="UI_AvatarIcon_Kazuha",
             ),
         )
@@ -81,6 +82,7 @@ class UnknownAssetProvider(Provider):
                     kind=EntityKind.CHARACTER,
                     key="unknown-character",
                 ),
+                role=AssetRole.CHARACTER_ICON,
                 reference="unknown-character-asset",
             ),
         )
@@ -95,6 +97,7 @@ def test_load_game_data_preserves_provider_assets() -> None:
                 kind=EntityKind.CHARACTER,
                 key="10000047",
             ),
+            role=AssetRole.CHARACTER_ICON,
             reference="UI_AvatarIcon_Kazuha",
         ),
     )

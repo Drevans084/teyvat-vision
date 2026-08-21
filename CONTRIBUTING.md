@@ -31,7 +31,7 @@ Before submitting a change, the following checks should pass:
 
     ruff check .
     ruff format --check .
-    mypy src
+    mypy src scripts
     pytest
 
 ## Architecture Changes
@@ -94,7 +94,7 @@ Before opening a pull request, run the local quality gates:
     uv lock --check
     uv run ruff check .
     uv run ruff format --check .
-    uv run mypy src
+    uv run mypy src scripts
     uv run pytest
     git diff --check
 

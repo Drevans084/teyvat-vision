@@ -7,7 +7,7 @@ from typing import cast
 
 from teyvat_vision.domain.artifact import ArtifactSlot
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
-from teyvat_vision.game_data.assets import GameDataAsset
+from teyvat_vision.game_data.assets import AssetRole, GameDataAsset
 from teyvat_vision.game_data.classification import Rarity, WeaponType
 from teyvat_vision.game_data.localization import LocalizedName
 from teyvat_vision.game_data.records import (
@@ -42,6 +42,36 @@ _ARTIFACT_CODEX_SLOTS = {
     "cupId": ArtifactSlot.GOBLET,
     "capId": ArtifactSlot.CIRCLET,
 }
+
+_ARTIFACT_ASSET_ROLES = {
+    ArtifactSlot.FLOWER: AssetRole.ARTIFACT_FLOWER,
+    ArtifactSlot.PLUME: AssetRole.ARTIFACT_PLUME,
+    ArtifactSlot.SANDS: AssetRole.ARTIFACT_SANDS,
+    ArtifactSlot.GOBLET: AssetRole.ARTIFACT_GOBLET,
+    ArtifactSlot.CIRCLET: AssetRole.ARTIFACT_CIRCLET,
+}
+
+_CHARACTER_ASSET_FIELDS = (
+    (
+        "iconName",
+        AssetRole.CHARACTER_ICON,
+    ),
+    (
+        "sideIconName",
+        AssetRole.CHARACTER_SIDE_ICON,
+    ),
+)
+
+_WEAPON_ASSET_FIELDS = (
+    (
+        "icon",
+        AssetRole.WEAPON_ICON,
+    ),
+    (
+        "awakenIcon",
+        AssetRole.WEAPON_AWAKENED_ICON,
+    ),
+)
 
 _MATERIAL_TYPES = frozenset(
     {
@@ -245,9 +275,244 @@ class AnimeGameDataProvider:
         return tuple(definitions)
 
     def assets(self) -> tuple[GameDataAsset, ...]:
-        """Load canonical static asset references."""
+        """Load typed symbolic assets for canonical provider members."""
 
-        return ()
+        character_keys = {definition.identity.key for definition in self.characters()}
+        weapon_keys = {definition.identity.key for definition in self.weapons()}
+        artifact_set_keys = {definition.identity.key for definition in self.artifact_sets()}
+        material_keys = {definition.identity.key for definition in self.materials()}
+
+        return (
+            *self._character_assets(character_keys),
+            *self._weapon_assets(weapon_keys),
+            *self._artifact_assets(artifact_set_keys),
+            *self._material_assets(material_keys),
+        )
+
+    def _character_assets(
+        self,
+        canonical_keys: set[str],
+    ) -> tuple[GameDataAsset, ...]:
+        records = self._load_records(self.root / "ExcelBinOutput" / "AvatarExcelConfigData.json")
+        assets: list[GameDataAsset] = []
+
+        for record in records:
+            if record.get("useType") != "AVATAR_FORMAL":
+                continue
+
+            character_id = self._required_int(
+                record,
+                "id",
+            )
+            key = str(character_id)
+
+            if key not in canonical_keys:
+                continue
+
+            subject = CanonicalId(
+                kind=EntityKind.CHARACTER,
+                key=key,
+            )
+            assets.extend(
+                self._assets_from_fields(
+                    record,
+                    subject=subject,
+                    fields=_CHARACTER_ASSET_FIELDS,
+                )
+            )
+
+        return tuple(assets)
+
+    def _weapon_assets(
+        self,
+        canonical_keys: set[str],
+    ) -> tuple[GameDataAsset, ...]:
+        records = self._load_records(self.root / "ExcelBinOutput" / "WeaponExcelConfigData.json")
+        text_map = self._load_english_text_map()
+        assets: list[GameDataAsset] = []
+
+        for record in records:
+            if self._resolved_name(record, text_map) is None:
+                continue
+
+            weapon_id = self._required_int(
+                record,
+                "id",
+            )
+            key = str(weapon_id)
+
+            if key not in canonical_keys:
+                continue
+
+            subject = CanonicalId(
+                kind=EntityKind.WEAPON,
+                key=key,
+            )
+            assets.extend(
+                self._assets_from_fields(
+                    record,
+                    subject=subject,
+                    fields=_WEAPON_ASSET_FIELDS,
+                )
+            )
+
+        return tuple(assets)
+
+    def _artifact_assets(
+        self,
+        canonical_keys: set[str],
+    ) -> tuple[GameDataAsset, ...]:
+        display_records = self._load_records(
+            self.root / "ExcelBinOutput" / "DisplayItemExcelConfigData.json"
+        )
+        codex_records = self._load_records(
+            self.root / "ExcelBinOutput" / "ReliquaryCodexExcelConfigData.json"
+        )
+        reliquary_records = self._load_records(
+            self.root / "ExcelBinOutput" / "ReliquaryExcelConfigData.json"
+        )
+        text_map = self._load_english_text_map()
+        codex_by_suit_id: dict[int, list[dict[str, object]]] = {}
+
+        for record in codex_records:
+            suit_id = self._required_int(
+                record,
+                "suitId",
+            )
+            codex_by_suit_id.setdefault(suit_id, []).append(record)
+
+        reliquary_by_id: dict[int, dict[str, object]] = {}
+
+        for record in reliquary_records:
+            piece_id = self._required_int(
+                record,
+                "id",
+            )
+
+            if piece_id in reliquary_by_id:
+                raise ValueError(f"duplicate reliquary id: {piece_id}")
+
+            reliquary_by_id[piece_id] = record
+
+        assets: list[GameDataAsset] = []
+        emitted_suit_ids: set[int] = set()
+
+        for display_record in display_records:
+            icon = display_record.get("icon")
+
+            if not isinstance(icon, str) or "RelicIcon" not in icon:
+                continue
+
+            if self._resolved_name(display_record, text_map) is None:
+                continue
+
+            suit_id = self._required_int(
+                display_record,
+                "param",
+            )
+            key = str(suit_id)
+
+            if key not in canonical_keys or suit_id in emitted_suit_ids:
+                continue
+
+            piece_records = self._artifact_piece_records(
+                codex_by_suit_id.get(suit_id, []),
+                reliquary_by_id,
+            )
+            subject = CanonicalId(
+                kind=EntityKind.ARTIFACT_SET,
+                key=key,
+            )
+            emitted_relationships: set[tuple[AssetRole, str]] = set()
+
+            for slot, piece_record in piece_records:
+                role = _ARTIFACT_ASSET_ROLES[slot]
+                reference = self._required_str(
+                    piece_record,
+                    "icon",
+                )
+                relationship = (
+                    role,
+                    reference,
+                )
+
+                if relationship in emitted_relationships:
+                    continue
+
+                assets.append(
+                    GameDataAsset(
+                        subject=subject,
+                        role=role,
+                        reference=reference,
+                    )
+                )
+                emitted_relationships.add(relationship)
+
+            emitted_suit_ids.add(suit_id)
+
+        return tuple(assets)
+
+    def _material_assets(
+        self,
+        canonical_keys: set[str],
+    ) -> tuple[GameDataAsset, ...]:
+        records = self._load_records(self.root / "ExcelBinOutput" / "MaterialExcelConfigData.json")
+        text_map = self._load_english_text_map()
+        assets: list[GameDataAsset] = []
+
+        for record in records:
+            if record.get("materialType") not in _MATERIAL_TYPES:
+                continue
+
+            if self._resolved_name(record, text_map) is None:
+                continue
+
+            material_id = self._required_int(
+                record,
+                "id",
+            )
+            key = str(material_id)
+
+            if key not in canonical_keys:
+                continue
+
+            subject = CanonicalId(
+                kind=EntityKind.MATERIAL,
+                key=key,
+            )
+            assets.extend(
+                self._assets_from_fields(
+                    record,
+                    subject=subject,
+                    fields=(
+                        (
+                            "icon",
+                            AssetRole.MATERIAL_ICON,
+                        ),
+                    ),
+                )
+            )
+
+        return tuple(assets)
+
+    @staticmethod
+    def _assets_from_fields(
+        record: dict[str, object],
+        *,
+        subject: CanonicalId,
+        fields: tuple[tuple[str, AssetRole], ...],
+    ) -> tuple[GameDataAsset, ...]:
+        return tuple(
+            GameDataAsset(
+                subject=subject,
+                role=role,
+                reference=AnimeGameDataProvider._required_str(
+                    record,
+                    field,
+                ),
+            )
+            for field, role in fields
+        )
 
     @staticmethod
     def _load_records(path: Path) -> tuple[dict[str, object], ...]:
