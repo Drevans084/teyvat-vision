@@ -56,17 +56,17 @@ def validate_snapshot_against_game_data(
     snapshot: AccountSnapshot,
     game_data: StaticGameData,
 ) -> ValidationResult:
-    """Validate account entity identities against normalized static game data."""
+    """Validate canonical account state against normalized static game data."""
 
-    character_identities = {definition.identity for definition in game_data.characters}
-    weapon_identities = {definition.identity for definition in game_data.weapons}
+    character_definitions = {definition.identity: definition for definition in game_data.characters}
+    weapon_definitions = {definition.identity: definition for definition in game_data.weapons}
     artifact_set_identities = {definition.identity for definition in game_data.artifact_sets}
     material_identities = {definition.identity for definition in game_data.materials}
 
     issues: list[ValidationIssue] = []
 
     for character in snapshot.characters.items:
-        if character.identity not in character_identities:
+        if character.identity not in character_definitions:
             issues.append(
                 ValidationIssue(
                     code="unknown_character",
@@ -78,7 +78,9 @@ def validate_snapshot_against_game_data(
             )
 
     for weapon in snapshot.weapons.items:
-        if weapon.identity.definition not in weapon_identities:
+        weapon_definition = weapon_definitions.get(weapon.identity.definition)
+
+        if weapon_definition is None:
             issues.append(
                 ValidationIssue(
                     code="unknown_weapon",
@@ -86,6 +88,30 @@ def validate_snapshot_against_game_data(
                     message=("weapon definition identity is absent from static game data"),
                     subject=weapon.identity,
                     field="identity.definition",
+                )
+            )
+            continue
+
+        if weapon.equipped_to is None:
+            continue
+
+        character_definition = character_definitions.get(weapon.equipped_to)
+
+        if character_definition is None:
+            continue
+
+        if (
+            weapon_definition.weapon_type is not None
+            and character_definition.weapon_type is not None
+            and weapon_definition.weapon_type is not character_definition.weapon_type
+        ):
+            issues.append(
+                ValidationIssue(
+                    code="weapon_type_mismatch",
+                    severity=ValidationSeverity.ERROR,
+                    message=("equipped weapon type does not match character weapon type"),
+                    subject=weapon.identity,
+                    field="equipped_to",
                 )
             )
 
