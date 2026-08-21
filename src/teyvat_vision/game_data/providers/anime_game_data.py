@@ -8,6 +8,7 @@ from typing import cast
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
 from teyvat_vision.game_data.assets import GameDataAsset
 from teyvat_vision.game_data.classification import Rarity, WeaponType
+from teyvat_vision.game_data.localization import LocalizedName
 from teyvat_vision.game_data.records import (
     ArtifactSetDefinition,
     CharacterDefinition,
@@ -98,7 +99,23 @@ class AnimeGameDataProvider:
     def weapons(self) -> tuple[WeaponDefinition, ...]:
         """Load canonical weapon definitions."""
 
-        return ()
+        weapon_records = self._load_records(
+            self.root / "ExcelBinOutput" / "WeaponExcelConfigData.json"
+        )
+
+        if not weapon_records:
+            raise ValueError("WeaponExcelConfigData.json must not be empty")
+
+        text_map = self._load_english_text_map()
+        member_records: list[tuple[dict[str, object], str]] = []
+
+        for record in weapon_records:
+            name = self._resolved_name(record, text_map)
+
+            if name is not None:
+                member_records.append((record, name))
+
+        return tuple(self._weapon_definition(record, name) for record, name in member_records)
 
     def artifact_sets(self) -> tuple[ArtifactSetDefinition, ...]:
         """Load canonical artifact-set definitions."""
@@ -142,6 +159,46 @@ class AnimeGameDataProvider:
 
         return tuple(records)
 
+    def _load_english_text_map(self) -> dict[str, str]:
+        text_map: dict[str, str] = {}
+
+        for filename in (
+            "TextMapEN.json",
+            "TextMap_MediumEN.json",
+        ):
+            path = self.root / "TextMap" / filename
+            raw: object = json.loads(path.read_text(encoding="utf-8"))
+
+            if not isinstance(raw, dict):
+                raise ValueError(f"{path.name} must contain a JSON object")
+
+            raw_mapping = cast(dict[object, object], raw)
+
+            for key, value in raw_mapping.items():
+                if not isinstance(key, str):
+                    raise ValueError(f"{path.name} JSON object keys must be strings")
+
+                if not isinstance(value, str):
+                    raise ValueError(f"{path.name} JSON object values must be strings")
+
+                if value.strip():
+                    text_map[key] = value
+
+        return text_map
+
+    @staticmethod
+    def _resolved_name(
+        record: dict[str, object],
+        text_map: dict[str, str],
+    ) -> str | None:
+        name_hash = record.get("nameTextMapHash")
+        name = text_map.get(str(name_hash))
+
+        if name is None or not name.strip():
+            return None
+
+        return name
+
     @staticmethod
     def _character_definition(
         record: dict[str, object],
@@ -166,6 +223,39 @@ class AnimeGameDataProvider:
             ),
             weapon_type=AnimeGameDataProvider._weapon_type(raw_weapon_type),
             rarity=AnimeGameDataProvider._rarity(raw_rarity),
+        )
+
+    @staticmethod
+    def _weapon_definition(
+        record: dict[str, object],
+        name: str,
+    ) -> WeaponDefinition:
+        raw_id = AnimeGameDataProvider._required_int(
+            record,
+            "id",
+        )
+        raw_weapon_type = AnimeGameDataProvider._required_str(
+            record,
+            "weaponType",
+        )
+        raw_rank_level = AnimeGameDataProvider._required_int(
+            record,
+            "rankLevel",
+        )
+
+        return WeaponDefinition(
+            identity=CanonicalId(
+                kind=EntityKind.WEAPON,
+                key=str(raw_id),
+            ),
+            names=(
+                LocalizedName(
+                    locale="en",
+                    value=name,
+                ),
+            ),
+            weapon_type=AnimeGameDataProvider._weapon_type(raw_weapon_type),
+            rarity=AnimeGameDataProvider._weapon_rarity(raw_rank_level),
         )
 
     @staticmethod
@@ -205,3 +295,10 @@ class AnimeGameDataProvider:
             return _RARITIES[raw]
         except KeyError as exc:
             raise ValueError(f"unsupported AnimeGameData rarity: {raw}") from exc
+
+    @staticmethod
+    def _weapon_rarity(raw: int) -> Rarity:
+        try:
+            return Rarity(raw)
+        except ValueError as exc:
+            raise ValueError(f"unsupported AnimeGameData weapon rankLevel: {raw}") from exc
