@@ -43,6 +43,17 @@ _ARTIFACT_CODEX_SLOTS = {
     "capId": ArtifactSlot.CIRCLET,
 }
 
+_MATERIAL_TYPES = frozenset(
+    {
+        "MATERIAL_AVATAR_MATERIAL",
+        "MATERIAL_EXCHANGE",
+        "MATERIAL_EXP_FRUIT",
+        "MATERIAL_FISH_BAIT",
+        "MATERIAL_WEAPON_EXP_STONE",
+        "MATERIAL_WOOD",
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class AnimeGameDataProvider:
@@ -205,7 +216,33 @@ class AnimeGameDataProvider:
     def materials(self) -> tuple[MaterialDefinition, ...]:
         """Load canonical material definitions."""
 
-        return ()
+        material_records = self._load_records(
+            self.root / "ExcelBinOutput" / "MaterialExcelConfigData.json"
+        )
+
+        if not material_records:
+            raise ValueError("MaterialExcelConfigData.json must not be empty")
+
+        text_map = self._load_english_text_map()
+        definitions: list[MaterialDefinition] = []
+
+        for record in material_records:
+            if record.get("materialType") not in _MATERIAL_TYPES:
+                continue
+
+            name = self._resolved_name(record, text_map)
+
+            if name is None:
+                continue
+
+            definitions.append(
+                self._material_definition(
+                    record,
+                    name,
+                )
+            )
+
+        return tuple(definitions)
 
     def assets(self) -> tuple[GameDataAsset, ...]:
         """Load canonical static asset references."""
@@ -408,6 +445,29 @@ class AnimeGameDataProvider:
             ),
             rarities=rarities,
             slots=slots,
+        )
+
+    @staticmethod
+    def _material_definition(
+        record: dict[str, object],
+        name: str,
+    ) -> MaterialDefinition:
+        raw_id = AnimeGameDataProvider._required_int(
+            record,
+            "id",
+        )
+
+        return MaterialDefinition(
+            identity=CanonicalId(
+                kind=EntityKind.MATERIAL,
+                key=str(raw_id),
+            ),
+            names=(
+                LocalizedName(
+                    locale="en",
+                    value=name,
+                ),
+            ),
         )
 
     @staticmethod
