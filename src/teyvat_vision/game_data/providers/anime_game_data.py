@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from teyvat_vision.domain.artifact import ArtifactSlot
 from teyvat_vision.domain.identity import CanonicalId, EntityKind
 from teyvat_vision.game_data.assets import GameDataAsset
 from teyvat_vision.game_data.classification import Rarity, WeaponType
@@ -32,6 +33,14 @@ _RARITIES = {
     "QUALITY_PURPLE": Rarity.FOUR_STAR,
     "QUALITY_ORANGE": Rarity.FIVE_STAR,
     "QUALITY_ORANGE_SP": Rarity.FIVE_STAR,
+}
+
+_ARTIFACT_CODEX_SLOTS = {
+    "flowerId": ArtifactSlot.FLOWER,
+    "leatherId": ArtifactSlot.PLUME,
+    "sandId": ArtifactSlot.SANDS,
+    "cupId": ArtifactSlot.GOBLET,
+    "capId": ArtifactSlot.CIRCLET,
 }
 
 
@@ -120,7 +129,78 @@ class AnimeGameDataProvider:
     def artifact_sets(self) -> tuple[ArtifactSetDefinition, ...]:
         """Load canonical artifact-set definitions."""
 
-        return ()
+        display_path = self.root / "ExcelBinOutput" / "DisplayItemExcelConfigData.json"
+        codex_path = self.root / "ExcelBinOutput" / "ReliquaryCodexExcelConfigData.json"
+        reliquary_path = self.root / "ExcelBinOutput" / "ReliquaryExcelConfigData.json"
+
+        display_records = self._load_records(display_path)
+        codex_records = self._load_records(codex_path)
+        reliquary_records = self._load_records(reliquary_path)
+
+        if not display_records:
+            raise ValueError("DisplayItemExcelConfigData.json must not be empty")
+
+        if not codex_records:
+            raise ValueError("ReliquaryCodexExcelConfigData.json must not be empty")
+
+        if not reliquary_records:
+            raise ValueError("ReliquaryExcelConfigData.json must not be empty")
+
+        text_map = self._load_english_text_map()
+        codex_by_suit_id: dict[int, list[dict[str, object]]] = {}
+
+        for record in codex_records:
+            suit_id = self._required_int(record, "suitId")
+            codex_by_suit_id.setdefault(suit_id, []).append(record)
+
+        reliquary_by_id: dict[int, dict[str, object]] = {}
+
+        for record in reliquary_records:
+            piece_id = self._required_int(record, "id")
+
+            if piece_id in reliquary_by_id:
+                raise ValueError(f"duplicate reliquary id: {piece_id}")
+
+            reliquary_by_id[piece_id] = record
+
+        definitions: list[ArtifactSetDefinition] = []
+        emitted_suit_ids: set[int] = set()
+
+        for display_record in display_records:
+            icon = display_record.get("icon")
+
+            if not isinstance(icon, str) or "RelicIcon" not in icon:
+                continue
+
+            suit_id = self._required_int(display_record, "param")
+
+            if suit_id in emitted_suit_ids:
+                continue
+
+            matching_codex_records = codex_by_suit_id.get(suit_id, [])
+            piece_records = self._artifact_piece_records(
+                matching_codex_records,
+                reliquary_by_id,
+            )
+
+            if not piece_records:
+                continue
+
+            name = self._resolved_name(display_record, text_map)
+
+            if name is None:
+                continue
+
+            definitions.append(
+                self._artifact_set_definition(
+                    suit_id,
+                    name,
+                    piece_records,
+                )
+            )
+            emitted_suit_ids.add(suit_id)
+
+        return tuple(definitions)
 
     def materials(self) -> tuple[MaterialDefinition, ...]:
         """Load canonical material definitions."""
@@ -200,6 +280,38 @@ class AnimeGameDataProvider:
         return name
 
     @staticmethod
+    def _artifact_piece_records(
+        codex_records: list[dict[str, object]],
+        reliquary_by_id: dict[int, dict[str, object]],
+    ) -> tuple[tuple[ArtifactSlot, dict[str, object]], ...]:
+        piece_records: list[tuple[ArtifactSlot, dict[str, object]]] = []
+        seen_piece_ids: set[int] = set()
+
+        for codex_record in codex_records:
+            for field, slot in _ARTIFACT_CODEX_SLOTS.items():
+                value = codex_record.get(field)
+
+                if value in (None, 0):
+                    continue
+
+                piece_id = AnimeGameDataProvider._required_int(
+                    codex_record,
+                    field,
+                )
+                piece_record = reliquary_by_id.get(piece_id)
+
+                if piece_record is None:
+                    raise ValueError(f"missing reliquary piece {piece_id} referenced by {field}")
+
+                if piece_id in seen_piece_ids:
+                    continue
+
+                piece_records.append((slot, piece_record))
+                seen_piece_ids.add(piece_id)
+
+        return tuple(piece_records)
+
+    @staticmethod
     def _character_definition(
         record: dict[str, object],
     ) -> CharacterDefinition:
@@ -259,6 +371,46 @@ class AnimeGameDataProvider:
         )
 
     @staticmethod
+    def _artifact_set_definition(
+        suit_id: int,
+        name: str,
+        piece_records: tuple[
+            tuple[ArtifactSlot, dict[str, object]],
+            ...,
+        ],
+    ) -> ArtifactSetDefinition:
+        slots = tuple(
+            slot
+            for slot in ArtifactSlot
+            if any(piece_slot is slot for piece_slot, _ in piece_records)
+        )
+        rank_levels = {
+            AnimeGameDataProvider._required_int(
+                piece_record,
+                "rankLevel",
+            )
+            for _, piece_record in piece_records
+        }
+        rarities = tuple(
+            AnimeGameDataProvider._artifact_rarity(rank_level) for rank_level in sorted(rank_levels)
+        )
+
+        return ArtifactSetDefinition(
+            identity=CanonicalId(
+                kind=EntityKind.ARTIFACT_SET,
+                key=str(suit_id),
+            ),
+            names=(
+                LocalizedName(
+                    locale="en",
+                    value=name,
+                ),
+            ),
+            rarities=rarities,
+            slots=slots,
+        )
+
+    @staticmethod
     def _required_int(
         record: dict[str, object],
         field: str,
@@ -302,3 +454,10 @@ class AnimeGameDataProvider:
             return Rarity(raw)
         except ValueError as exc:
             raise ValueError(f"unsupported AnimeGameData weapon rankLevel: {raw}") from exc
+
+    @staticmethod
+    def _artifact_rarity(raw: int) -> Rarity:
+        try:
+            return Rarity(raw)
+        except ValueError as exc:
+            raise ValueError(f"unsupported AnimeGameData artifact rankLevel: {raw}") from exc
